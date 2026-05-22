@@ -1,6 +1,6 @@
-export default {
+module.exports = {
   plugins: {
-    tailwindcss: { config: "I:/Friend Hub/frontend/tailwind.config.js" },
-    autoprefixer: {}
-  }
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 };

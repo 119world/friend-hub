@@ -1,8 +1,8 @@
-export default {
-  content: {
-    relative: true,
-    files: ["./index.html", "./src/**/*.{js,jsx}"]
-  },
+module.exports = {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
   safelist: ["grid", "fixed", "rounded-full"],
   theme: {
     extend: {
