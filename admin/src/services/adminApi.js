@@ -1,14 +1,18 @@
 import axios from "axios";
 
-function apiBaseUrl() {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  const base = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
-  if (!base) return "http://localhost:8080/api";
+function normalizeApiUrl(value) {
+  const base = String(value || "").replace(/\/+$/, "");
+  if (!base) return "";
   return base.endsWith("/api") ? base : `${base}/api`;
 }
 
+function apiBaseUrl() {
+  return normalizeApiUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL) || "http://localhost:8080/api";
+}
+
 const adminApi = axios.create({
-  baseURL: apiBaseUrl()
+  baseURL: apiBaseUrl(),
+  timeout: 7000
 });
 
 adminApi.interceptors.request.use((config) => {

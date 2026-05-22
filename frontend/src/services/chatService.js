@@ -1,22 +1,12 @@
-import {
-  addDoc,
-  arrayUnion,
-  collection,
-  doc,
-  getDoc,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  writeBatch
-} from "firebase/firestore";
-import { db } from "../firebase/firebase";
 import { localConversation } from "../utils/sampleData";
 
-const useFirestore = import.meta.env.VITE_USE_FIRESTORE !== "false";
+const useFirestore = import.meta.env.VITE_USE_FIRESTORE === "true";
+
+async function loadFirestore() {
+  const firestore = await import("firebase/firestore");
+  const firebase = await import("../firebase/firebase");
+  return { db: firebase.db, ...firestore };
+}
 
 function readLocalChats() {
   return JSON.parse(localStorage.getItem("friendHubLocalChats") || "{}");
@@ -55,8 +45,10 @@ export async function openChat({ user, target }) {
     writeLocalChats(chats);
     return chatId;
   }
+
   const chatId = [user.uid, target.id].sort().join("_");
   try {
+    const { db, addDoc, collection, doc, getDoc, serverTimestamp, setDoc } = await loadFirestore();
     const ref = doc(db, "chats", chatId);
     const snap = await getDoc(ref);
     if (!snap.exists()) {
@@ -98,17 +90,28 @@ export async function openChat({ user, target }) {
 }
 
 export function listenMessages(chatId, cb) {
-  if (chatId.startsWith("local_")) {
+  if (chatId.startsWith("local_") || !useFirestore) {
     const chats = readLocalChats();
     cb(chats[chatId]?.messages || localConversation);
     return () => {};
   }
-  const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(80));
-  return onSnapshot(q, (snap) => cb(snap.docs.map((item) => ({ id: item.id, ...item.data() }))));
+
+  let unsub = () => {};
+  let closed = false;
+  loadFirestore().then(({ db, collection, limit, onSnapshot, orderBy, query }) => {
+    if (closed) return;
+    const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(80));
+    unsub = onSnapshot(q, (snap) => cb(snap.docs.map((item) => ({ id: item.id, ...item.data() }))));
+  }).catch(() => cb(localConversation));
+
+  return () => {
+    closed = true;
+    unsub();
+  };
 }
 
 export async function sendMessage(chatId, message) {
-  if (chatId.startsWith("local_")) {
+  if (chatId.startsWith("local_") || !useFirestore) {
     const chats = readLocalChats();
     chats[chatId] ||= { id: chatId, messages: [] };
     chats[chatId].messages.push({
@@ -119,6 +122,8 @@ export async function sendMessage(chatId, message) {
     writeLocalChats(chats);
     return chats[chatId].messages;
   }
+
+  const { db, addDoc, collection, doc, serverTimestamp, updateDoc } = await loadFirestore();
   await addDoc(collection(db, "chats", chatId, "messages"), {
     ...message,
     readBy: [message.senderId],
@@ -150,14 +155,25 @@ export function appendLocalBotReply(chatId, text) {
 }
 
 export function listenChatMeta(chatId, cb) {
-  if (chatId.startsWith("local_")) return () => {};
-  return onSnapshot(doc(db, "chats", chatId), (snap) => {
-    if (snap.exists()) cb({ id: snap.id, ...snap.data() });
-  }, () => {});
+  if (chatId.startsWith("local_") || !useFirestore) return () => {};
+
+  let unsub = () => {};
+  let closed = false;
+  loadFirestore().then(({ db, doc, onSnapshot }) => {
+    if (closed) return;
+    unsub = onSnapshot(doc(db, "chats", chatId), (snap) => {
+      if (snap.exists()) cb({ id: snap.id, ...snap.data() });
+    }, () => {});
+  });
+  return () => {
+    closed = true;
+    unsub();
+  };
 }
 
 export async function setTypingStatus(chatId, userId, typing) {
-  if (!chatId || !userId || chatId.startsWith("local_")) return;
+  if (!chatId || !userId || chatId.startsWith("local_") || !useFirestore) return;
+  const { db, doc, serverTimestamp, setDoc } = await loadFirestore();
   await setDoc(doc(db, "chats", chatId), {
     typing: {
       [userId]: typing ? Date.now() : null
@@ -167,7 +183,8 @@ export async function setTypingStatus(chatId, userId, typing) {
 }
 
 export async function markMessagesSeen(chatId, userId, messages = []) {
-  if (!chatId || !userId || chatId.startsWith("local_")) return;
+  if (!chatId || !userId || chatId.startsWith("local_") || !useFirestore) return;
+  const { db, arrayUnion, doc, writeBatch } = await loadFirestore();
   const batch = writeBatch(db);
   let count = 0;
   messages.forEach((message) => {

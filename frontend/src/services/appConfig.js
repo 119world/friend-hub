@@ -1,6 +1,6 @@
-import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "../firebase/firebase";
 import api from "./api";
+
+const POLL_MS = 30000;
 
 export const defaultPlans = [
   { id: "first_9", title: "First-time Offer", originalPrice: 19, price: 9, diamonds: 30, minutes: 1, active: true, subscription: false, autoPay: true, autoPayAmount: 9 },
@@ -30,7 +30,13 @@ export const defaultWelcome = {
   maintenanceActionUrl: ""
 };
 
-const useFirestore = import.meta.env.VITE_USE_FIRESTORE !== "false";
+const useFirestore = import.meta.env.VITE_USE_FIRESTORE === "true";
+
+async function loadFirestore() {
+  const firestore = await import("firebase/firestore");
+  const firebase = await import("../firebase/firebase");
+  return { ...firestore, db: firebase.db };
+}
 
 async function apiFallback(path, fallback) {
   try {
@@ -64,15 +70,24 @@ export function listenWelcomeConfig(cb) {
     let live = true;
     const load = () => apiFallback("/public/welcome", defaultWelcome).then((item) => live && cb({ ...defaultWelcome, ...item }));
     load();
-    const timer = window.setInterval(load, 10000);
+    const timer = window.setInterval(load, POLL_MS);
     return () => {
       live = false;
       window.clearInterval(timer);
     };
   }
-  return onSnapshot(doc(db, "appSettings", "welcome"), (snap) => {
-    cb({ ...defaultWelcome, ...(snap.exists() ? snap.data() : {}) });
-  }, () => apiFallback("/public/welcome", defaultWelcome).then((item) => cb({ ...defaultWelcome, ...item })));
+  let unsub = () => {};
+  let closed = false;
+  loadFirestore().then(({ doc, onSnapshot, db }) => {
+    if (closed) return;
+    unsub = onSnapshot(doc(db, "appSettings", "welcome"), (snap) => {
+      cb({ ...defaultWelcome, ...(snap.exists() ? snap.data() : {}) });
+    }, () => apiFallback("/public/welcome", defaultWelcome).then((item) => cb({ ...defaultWelcome, ...item })));
+  }).catch(() => apiFallback("/public/welcome", defaultWelcome).then((item) => cb({ ...defaultWelcome, ...item })));
+  return () => {
+    closed = true;
+    unsub();
+  };
 }
 
 export function listenPlans(cb) {
@@ -80,17 +95,26 @@ export function listenPlans(cb) {
     let live = true;
     const load = () => apiFallback("/public/plans", defaultPlans).then((items) => live && cb(items.length ? items : defaultPlans));
     load();
-    const timer = window.setInterval(load, 10000);
+    const timer = window.setInterval(load, POLL_MS);
     return () => {
       live = false;
       window.clearInterval(timer);
     };
   }
-  const q = query(collection(db, "plans"), where("active", "==", true));
-  return onSnapshot(q, (snap) => {
-    const plans = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
-    cb(plans.length ? plans : defaultPlans);
-  }, () => apiFallback("/public/plans", defaultPlans).then((items) => cb(items.length ? items : defaultPlans)));
+  let unsub = () => {};
+  let closed = false;
+  loadFirestore().then(({ collection, onSnapshot, query, where, db }) => {
+    if (closed) return;
+    const q = query(collection(db, "plans"), where("active", "==", true));
+    unsub = onSnapshot(q, (snap) => {
+      const plans = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      cb(plans.length ? plans : defaultPlans);
+    }, () => apiFallback("/public/plans", defaultPlans).then((items) => cb(items.length ? items : defaultPlans)));
+  }).catch(() => apiFallback("/public/plans", defaultPlans).then((items) => cb(items.length ? items : defaultPlans)));
+  return () => {
+    closed = true;
+    unsub();
+  };
 }
 
 export function listenReplyConfig(cb) {
@@ -98,15 +122,24 @@ export function listenReplyConfig(cb) {
     let live = true;
     const load = () => apiFallback("/public/reply-config", defaultReplyConfig).then((item) => live && cb({ ...defaultReplyConfig, ...item }));
     load();
-    const timer = window.setInterval(load, 10000);
+    const timer = window.setInterval(load, POLL_MS);
     return () => {
       live = false;
       window.clearInterval(timer);
     };
   }
-  return onSnapshot(doc(db, "replyTemplates", "default"), (snap) => {
-    cb({ ...defaultReplyConfig, ...(snap.exists() ? snap.data() : {}) });
-  }, () => apiFallback("/public/reply-config", defaultReplyConfig).then((item) => cb({ ...defaultReplyConfig, ...item })));
+  let unsub = () => {};
+  let closed = false;
+  loadFirestore().then(({ doc, onSnapshot, db }) => {
+    if (closed) return;
+    unsub = onSnapshot(doc(db, "replyTemplates", "default"), (snap) => {
+      cb({ ...defaultReplyConfig, ...(snap.exists() ? snap.data() : {}) });
+    }, () => apiFallback("/public/reply-config", defaultReplyConfig).then((item) => cb({ ...defaultReplyConfig, ...item })));
+  }).catch(() => apiFallback("/public/reply-config", defaultReplyConfig).then((item) => cb({ ...defaultReplyConfig, ...item })));
+  return () => {
+    closed = true;
+    unsub();
+  };
 }
 
 export function listenPublicProfiles(cb) {
@@ -114,7 +147,7 @@ export function listenPublicProfiles(cb) {
     let live = true;
     const load = () => apiFallback("/public/profiles", []).then((items) => live && cb(items.map((item) => normalizeProfile(item.id, item.type, item))));
     load();
-    const timer = window.setInterval(load, 10000);
+    const timer = window.setInterval(load, POLL_MS);
     return () => {
       live = false;
       window.clearInterval(timer);
@@ -122,27 +155,34 @@ export function listenPublicProfiles(cb) {
   }
   const values = { partners: [], bots: [] };
   const emit = () => cb([...values.partners, ...values.bots].filter((item) => item.active !== false));
-  const partnerQ = query(collection(db, "partners"), where("active", "==", true));
-  const botQ = query(collection(db, "aiBots"), where("active", "==", true));
-  const unsubPartners = onSnapshot(partnerQ, (snap) => {
-    values.partners = snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data()));
-    emit();
-  }, () => {
-    apiFallback("/public/profiles", []).then((items) => {
-      values.partners = items.filter((item) => item.type === "partner").map((item) => normalizeProfile(item.id, "partner", item));
+  let unsubPartners = () => {};
+  let unsubBots = () => {};
+  let closed = false;
+  loadFirestore().then(({ collection, onSnapshot, query, where, db }) => {
+    if (closed) return;
+    const partnerQ = query(collection(db, "partners"), where("active", "==", true));
+    const botQ = query(collection(db, "aiBots"), where("active", "==", true));
+    unsubPartners = onSnapshot(partnerQ, (snap) => {
+      values.partners = snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data()));
       emit();
+    }, () => {
+      apiFallback("/public/profiles", []).then((items) => {
+        values.partners = items.filter((item) => item.type === "partner").map((item) => normalizeProfile(item.id, "partner", item));
+        emit();
+      });
     });
-  });
-  const unsubBots = onSnapshot(botQ, (snap) => {
-    values.bots = snap.docs.map((item) => normalizeProfile(item.id, "bot", item.data()));
-    emit();
-  }, () => {
-    apiFallback("/public/profiles", []).then((items) => {
-      values.bots = items.filter((item) => item.type === "bot").map((item) => normalizeProfile(item.id, "bot", item));
+    unsubBots = onSnapshot(botQ, (snap) => {
+      values.bots = snap.docs.map((item) => normalizeProfile(item.id, "bot", item.data()));
       emit();
+    }, () => {
+      apiFallback("/public/profiles", []).then((items) => {
+        values.bots = items.filter((item) => item.type === "bot").map((item) => normalizeProfile(item.id, "bot", item));
+        emit();
+      });
     });
-  });
+  }).catch(() => apiFallback("/public/profiles", []).then((items) => cb(items.map((item) => normalizeProfile(item.id, item.type, item)))));
   return () => {
+    closed = true;
     unsubPartners();
     unsubBots();
   };

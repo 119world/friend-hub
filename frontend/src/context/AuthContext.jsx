@@ -1,18 +1,31 @@
 import { createContext, useEffect, useMemo, useState } from "react";
-import {
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInAnonymously,
-  signInWithPopup,
-  signOut,
-  signInWithPhoneNumber
-} from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { auth, db, googleProvider, RecaptchaVerifier } from "../firebase/firebase";
 
 export const AuthContext = createContext(null);
 
-const defaultProfile = (user) => ({
+const useFirestore = import.meta.env.VITE_USE_FIRESTORE === "true";
+
+function hasFirebaseConfig() {
+  return Boolean(
+    import.meta.env.VITE_FIREBASE_API_KEY &&
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
+    import.meta.env.VITE_FIREBASE_PROJECT_ID &&
+    import.meta.env.VITE_FIREBASE_PROJECT_ID !== "demo"
+  );
+}
+
+async function loadFirebaseAuth() {
+  const firebase = await import("../firebase/firebase");
+  const authSdk = await import("firebase/auth");
+  return { ...firebase, ...authSdk };
+}
+
+async function loadFirestoreTools() {
+  const firebase = await import("../firebase/firebase");
+  const firestore = await import("firebase/firestore");
+  return { db: firebase.db, ...firestore };
+}
+
+const defaultProfile = (user, timestamp = new Date().toISOString()) => ({
   uid: user.uid,
   name: user.displayName || "Friend Hub User",
   age: 21,
@@ -30,8 +43,8 @@ const defaultProfile = (user) => ({
   referralCode: user.uid.slice(0, 8).toUpperCase(),
   referralCount: 0,
   online: true,
-  createdAt: serverTimestamp(),
-  updatedAt: serverTimestamp()
+  createdAt: timestamp,
+  updatedAt: timestamp
 });
 
 export function AuthProvider({ children }) {
@@ -40,6 +53,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let unsub = () => {};
+    let live = true;
+
     const localProfile = localStorage.getItem("friendHubLocalProfile");
     if (localProfile) {
       try {
@@ -52,28 +68,53 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("friendHubLocalProfile");
       }
     }
-    return onAuthStateChanged(auth, async (current) => {
-      setUser(current);
-      if (!current) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-      try {
-        const ref = doc(db, "users", current.uid);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
-          await setDoc(ref, defaultProfile(current), { merge: true });
-        } else {
-          await setDoc(ref, { online: true, updatedAt: serverTimestamp() }, { merge: true });
-        }
-        const fresh = await getDoc(ref);
-        setProfile({ id: fresh.id, ...fresh.data() });
-      } catch {
-        setProfile(defaultProfile(current));
-      }
+
+    if (!hasFirebaseConfig()) {
       setLoading(false);
+      return undefined;
+    }
+
+    loadFirebaseAuth().then(({ auth, onAuthStateChanged }) => {
+      if (!live) return;
+      unsub = onAuthStateChanged(auth, async (current) => {
+        if (!live) return;
+        setUser(current);
+        if (!current) {
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        if (!useFirestore) {
+          setProfile(defaultProfile(current));
+          setLoading(false);
+          return;
+        }
+
+        try {
+          const { db, doc, getDoc, serverTimestamp, setDoc } = await loadFirestoreTools();
+          const ref = doc(db, "users", current.uid);
+          const snap = await getDoc(ref);
+          if (!snap.exists()) {
+            await setDoc(ref, defaultProfile(current, serverTimestamp()), { merge: true });
+          } else {
+            await setDoc(ref, { online: true, updatedAt: serverTimestamp() }, { merge: true });
+          }
+          const fresh = await getDoc(ref);
+          setProfile({ id: fresh.id, ...fresh.data() });
+        } catch {
+          setProfile(defaultProfile(current));
+        }
+        setLoading(false);
+      });
+    }).catch(() => {
+      if (live) setLoading(false);
     });
+
+    return () => {
+      live = false;
+      unsub();
+    };
   }, []);
 
   const value = useMemo(
@@ -82,13 +123,14 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       refreshProfile: async () => {
-        if (user?.isLocal) {
+        if (user?.isLocal || !useFirestore) {
           const parsed = JSON.parse(localStorage.getItem("friendHubLocalProfile") || "{}");
-          setProfile(parsed);
+          setProfile(Object.keys(parsed).length ? parsed : profile);
           return;
         }
-        if (!auth.currentUser) return;
         try {
+          const [{ auth }, { db, doc, getDoc }] = await Promise.all([loadFirebaseAuth(), loadFirestoreTools()]);
+          if (!auth.currentUser) return;
           const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
           setProfile({ id: snap.id, ...snap.data() });
         } catch {}
@@ -101,12 +143,15 @@ export function AuthProvider({ children }) {
           diamonds: Number(profile?.diamonds || 0) + Number(plan.diamonds || 0),
           minutes: Number(profile?.minutes || 0) + Number(plan.minutes || 0)
         };
-        if (user.isLocal || import.meta.env.VITE_USE_FIRESTORE === "false") {
-          localStorage.setItem("friendHubLocalProfile", JSON.stringify({ ...next, isLocal: user.isLocal || import.meta.env.VITE_USE_FIRESTORE === "false" }));
+        if (user.isLocal || !useFirestore) {
+          localStorage.setItem("friendHubLocalProfile", JSON.stringify({ ...next, isLocal: true }));
         }
         setProfile(next);
       },
-      loginGoogle: () => signInWithPopup(auth, googleProvider),
+      loginGoogle: async () => {
+        const { auth, googleProvider, signInWithPopup } = await loadFirebaseAuth();
+        return signInWithPopup(auth, googleProvider);
+      },
       enterWithoutLogin: (overrides = {}) => {
         const local = {
           uid: `local_${Date.now()}`,
@@ -133,8 +178,12 @@ export function AuthProvider({ children }) {
         setUser({ uid: local.uid, isLocal: true });
         setProfile(local);
       },
-      loginGuest: () => signInAnonymously(auth),
+      loginGuest: async () => {
+        const { auth, signInAnonymously } = await loadFirebaseAuth();
+        return signInAnonymously(auth);
+      },
       startPhoneLogin: async (phone) => {
+        const { auth, RecaptchaVerifier, signInWithPhoneNumber } = await loadFirebaseAuth();
         window.recaptchaVerifier ||= new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
         return signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
       },
@@ -146,12 +195,18 @@ export function AuthProvider({ children }) {
           setProfile(null);
           return;
         }
-        if (auth.currentUser) {
-          await setDoc(doc(db, "users", auth.currentUser.uid), { online: false }, { merge: true }).catch(() => {});
+        try {
+          const { auth, signOut } = await loadFirebaseAuth();
+          if (useFirestore && auth.currentUser) {
+            const { db, doc, setDoc } = await loadFirestoreTools();
+            await setDoc(doc(db, "users", auth.currentUser.uid), { online: false }, { merge: true }).catch(() => {});
+          }
+          return signOut(auth);
+        } catch {
+          setUser(null);
+          setProfile(null);
         }
-        return signOut(auth);
-      },
-      GoogleAuthProvider
+      }
     }),
     [user, profile, loading]
   );
