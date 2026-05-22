@@ -4,3 +4,7 @@
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://10.243.217.99:5173/
   ➜  press h + enter to show help
+9:47:37 AM [vite] hmr update /src/App.jsx, /src/index.css
+9:47:37 AM [vite] hmr update /src/pages/Login.jsx, /src/index.css, /src/pages/ChatRoom.jsx, /src/pages/Matches.jsx, /src/pages/Discovery.jsx, /src/pages/TargetProfile.jsx, /src/pages/Recharge.jsx, /src/components/AutoEngagement.jsx
+9:49:09 AM [vite] hmr update /src/context/AuthContext.jsx, /src/index.css
+9:49:09 AM [vite] hmr update /src/pages/Recharge.jsx, /src/index.css

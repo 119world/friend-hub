@@ -1,1 +1,9 @@
 Friend Hub API running on http://localhost:8080
+[0mGET /health [32m200[0m 10.890 ms - 34[0m
+[0mGET /api/public/welcome [32m200[0m 59.239 ms - 494[0m
+[0mGET /api/public/plans [32m200[0m 65.111 ms - 678[0m
+[0mPOST /api/payments/create-order [32m200[0m 957.854 ms - 169[0m
+[0mGET /health [32m200[0m 0.393 ms - 34[0m
+[0mGET /api/public/plans [32m200[0m 0.765 ms - 678[0m
+[0mGET /api/public/profiles [32m200[0m 0.917 ms - 12[0m
+[0mGET /api/public/welcome [32m200[0m 0.881 ms - 494[0m
