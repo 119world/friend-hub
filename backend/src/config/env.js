@@ -27,6 +27,7 @@ export const env = {
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID,
     keySecret: process.env.RAZORPAY_KEY_SECRET,
-    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    fallbackPaymentUrl: process.env.RAZORPAY_FALLBACK_PAYMENT_URL || process.env.RAZORPAY_PAYMENT_LINK_URL || ""
   }
 };

@@ -63,10 +63,12 @@ export default function Recharge() {
       const { data } = await api.post("/payments/create-order", { planId: plan.id, payMethod });
       if (data.manual) {
         setManualPayment({ plan, ...data });
+        if (data.fallbackPaymentUrl) window.open(data.fallbackPaymentUrl, "_blank", "noopener,noreferrer");
         return;
       }
       if (data.demo || !window.Razorpay) {
         setManualPayment({ plan, ...data, demo: true });
+        if (data.fallbackPaymentUrl) window.open(data.fallbackPaymentUrl, "_blank", "noopener,noreferrer");
         return;
       }
       const rz = new window.Razorpay({
@@ -271,8 +273,18 @@ export default function Recharge() {
             {manualPayment.account?.qrImage && (
               <img src={manualPayment.account.qrImage} alt="UPI QR" className="mt-2 h-28 w-28 rounded-xl object-cover" />
             )}
-            {manualPayment.account?.upiId && (
+              {manualPayment.account?.upiId && (
               <p className="mt-2 rounded-xl bg-slate-50 p-2 text-sm font-black text-slate-700">UPI ID: {manualPayment.account.upiId}</p>
+            )}
+            {manualPayment.fallbackPaymentUrl && (
+              <a
+                href={manualPayment.fallbackPaymentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="pink-gradient mt-2 inline-flex rounded-full px-4 py-2 text-sm font-black text-white"
+              >
+                Pay via Razorpay Link
+              </a>
             )}
           </article>
         )}

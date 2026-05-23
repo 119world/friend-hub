@@ -7,10 +7,25 @@ import { creditWallet, getPlan } from "../services/paymentService.js";
 import { getLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
 import { verifyRazorpaySignature } from "../utils/crypto.js";
 
+const PLAN_FALLBACK_LINKS = {
+  offer_49: "https://rzp.io/rzp/nmmc8s4L",
+  premium_99: "https://rzp.io/rzp/nHX3lxKQ"
+};
+
 function publicAccount(account) {
   if (!account) return null;
   const { keySecret, webhookSecret, ...safe } = account;
   return safe;
+}
+
+function fallbackPaymentUrlFor(planId, account) {
+  return (
+    account?.fallbackPaymentUrl ||
+    account?.paymentLinkUrl ||
+    PLAN_FALLBACK_LINKS[planId] ||
+    env.razorpay.fallbackPaymentUrl ||
+    ""
+  );
 }
 
 function razorpayClientFor(account) {
@@ -90,6 +105,7 @@ export async function createOrder(req, res) {
   const amount = Number(plan.amount || plan.price);
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ message: "Invalid recharge plan." });
   const account = await getActivePaymentAccount(amount);
+  const fallbackPaymentUrl = fallbackPaymentUrlFor(planId, account);
   const gateway = account?.gateway || "razorpay";
   if (gateway === "upi" || gateway === "manual_upi" || (account?.upiId && !account?.keyId && !env.razorpay.keyId)) {
     const orderId = `manual_${Date.now()}`;
@@ -107,7 +123,8 @@ export async function createOrder(req, res) {
       amount: amount * 100,
       account: publicAccount(account),
       manual: true,
-      paymentOptions: ["UPI", "QR", "PhonePe", "Google Pay", "Paytm", "BHIM"]
+      paymentOptions: ["UPI", "QR", "PhonePe", "Google Pay", "Paytm", "BHIM"],
+      fallbackPaymentUrl
     });
   }
   const client = razorpayClientFor(account);
@@ -122,7 +139,14 @@ export async function createOrder(req, res) {
       activePaymentAccountId: account?.id || null,
       createdAt: nowValue()
     });
-    return res.json({ orderId, amount: amount * 100, keyId: account?.keyId || env.razorpay.keyId || "rzp_test_missing", account: publicAccount(account), demo: true });
+    return res.json({
+      orderId,
+      amount: amount * 100,
+      keyId: account?.keyId || env.razorpay.keyId || "rzp_test_missing",
+      account: publicAccount(account),
+      demo: true,
+      fallbackPaymentUrl
+    });
   }
   let order;
   try {
@@ -143,7 +167,14 @@ export async function createOrder(req, res) {
       activePaymentAccountId: account?.id || null,
       createdAt: nowValue()
     });
-    return res.json({ orderId, amount: amount * 100, keyId: account?.keyId || env.razorpay.keyId || "rzp_test_missing", account: publicAccount(account), demo: true });
+    return res.json({
+      orderId,
+      amount: amount * 100,
+      keyId: account?.keyId || env.razorpay.keyId || "rzp_test_missing",
+      account: publicAccount(account),
+      demo: true,
+      fallbackPaymentUrl
+    });
   }
   await savePayment(order.id, {
     userId: req.user.uid,
@@ -159,7 +190,8 @@ export async function createOrder(req, res) {
     amount: order.amount,
     keyId: account?.keyId || env.razorpay.keyId,
     account: publicAccount(account),
-    paymentOptions: ["UPI", "Cards", "Netbanking", "Wallets", "Pay Later", "QR"]
+    paymentOptions: ["UPI", "Cards", "Netbanking", "Wallets", "Pay Later", "QR"],
+    fallbackPaymentUrl
   });
 }
 
