@@ -174,34 +174,36 @@ export default function Login() {
             </button>
           </div>
           {portal && (
-            <div className="max-h-[72vh] overflow-y-auto rounded-[26px] bg-white/95 p-4 text-zinc-900 shadow-xl">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="font-black">{portal === "admin" ? "Admin Login" : "Partner Login"}</p>
-                <button onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); }} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
+            <div className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px]">
+              <div className="absolute inset-x-3 bottom-3 max-h-[70dvh] overflow-y-auto rounded-[26px] bg-white p-4 text-zinc-900 shadow-xl">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="font-black">{portal === "admin" ? "Admin Login" : "Partner Login"}</p>
+                  <button onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); }} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
+                </div>
+                <input
+                  value={portalForm.id}
+                  onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })}
+                  placeholder="ID"
+                  name={`fh_${portal}_login_id`}
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  spellCheck={false}
+                  className="w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
+                />
+                <input
+                  value={portalForm.password}
+                  onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })}
+                  type="password"
+                  placeholder="Password"
+                  name={`fh_${portal}_login_password`}
+                  autoComplete="new-password"
+                  data-lpignore="true"
+                  className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
+                />
+                <button disabled={portalBusy} onClick={handlePortalLogin} className="pink-gradient mt-3 h-11 w-full rounded-full font-black text-white disabled:opacity-60">
+                  {portalBusy ? "Please wait..." : "Login"}
+                </button>
               </div>
-              <input
-                value={portalForm.id}
-                onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })}
-                placeholder="ID"
-                name={`fh_${portal}_login_id`}
-                autoComplete="new-password"
-                data-lpignore="true"
-                spellCheck={false}
-                className="w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
-              />
-              <input
-                value={portalForm.password}
-                onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })}
-                type="password"
-                placeholder="Password"
-                name={`fh_${portal}_login_password`}
-                autoComplete="new-password"
-                data-lpignore="true"
-                className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
-              />
-              <button disabled={portalBusy} onClick={handlePortalLogin} className="pink-gradient mt-3 w-full rounded-full py-3 font-black text-white disabled:opacity-60">
-                {portalBusy ? "Please wait..." : "Login"}
-              </button>
             </div>
           )}
           {showOtp && (

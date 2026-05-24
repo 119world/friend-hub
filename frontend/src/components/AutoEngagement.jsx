@@ -42,6 +42,7 @@ export default function AutoEngagement() {
       now < snoozeUntil
     ) {
       setPrompt(null);
+      setCallMode(null);
       return undefined;
     }
     const timer = window.setInterval(() => {
@@ -98,7 +99,7 @@ export default function AutoEngagement() {
             initial={{ opacity: 0, y: 40, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
-            className="fixed bottom-[96px] left-1/2 z-40 w-[min(calc(100%-24px),420px)] -translate-x-1/2 rounded-[24px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
+            className="fixed bottom-[96px] left-1/2 z-40 w-[min(calc(100%-16px),420px)] -translate-x-1/2 rounded-[24px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
           >
             <div className="flex items-center gap-3">
               <img src={prompt.target.photos?.[0] || sampleProfiles[0].photos[0]} alt="" className="h-14 w-14 rounded-full object-cover" />
