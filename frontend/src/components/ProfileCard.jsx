@@ -22,7 +22,7 @@ export default function ProfileCard({ profile, onChat, onVoice }) {
           <div className="flex flex-col items-end gap-1">
             {isBot ? (
               <span className="flex items-center gap-1 rounded-full bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
-                <Bot size={14} /> AI Bot
+                <Bot size={14} /> Friend Hub
               </span>
             ) : (
               <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">

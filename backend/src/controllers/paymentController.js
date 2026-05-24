@@ -8,6 +8,8 @@ import { getLocalResource, listLocalResource, upsertLocalResource } from "../ser
 import { verifyRazorpaySignature } from "../utils/crypto.js";
 
 const PLAN_FALLBACK_LINKS = {
+  first_9: "https://rzp.io/rzp/goFzJpG",
+  normal_19: "https://rzp.io/rzp/z1PA4DZ8",
   offer_49: "https://rzp.io/rzp/nmmc8s4L",
   premium_99: "https://rzp.io/rzp/nHX3lxKQ"
 };

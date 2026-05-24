@@ -14,6 +14,7 @@ const prompts = [
   "Want to talk for a minute?",
   "I sent you a message."
 ];
+const blockedPaths = ["/login", "/recharge", "/profile", "/partner"];
 
 export default function AutoEngagement() {
   const { user, profile } = useAuth();
@@ -23,6 +24,7 @@ export default function AutoEngagement() {
   const [prompt, setPrompt] = useState(null);
   const [callMode, setCallMode] = useState(null);
   const diamonds = Number(profile?.diamonds || 0);
+  const [snoozeUntil, setSnoozeUntil] = useState(() => Number(localStorage.getItem("friendHubPromptSnoozeUntil") || 0));
 
   useEffect(() => listenPublicProfiles(setProfiles), []);
 
@@ -32,7 +34,13 @@ export default function AutoEngagement() {
   }, [profiles]);
 
   useEffect(() => {
-    if (!user || diamonds > 0 || location.pathname.startsWith("/recharge")) {
+    const now = Date.now();
+    if (
+      !user ||
+      diamonds > 0 ||
+      blockedPaths.some((path) => location.pathname.startsWith(path)) ||
+      now < snoozeUntil
+    ) {
       setPrompt(null);
       return undefined;
     }
@@ -48,9 +56,9 @@ export default function AutoEngagement() {
           text: target.welcomeMessage || prompts[Math.floor(Math.random() * prompts.length)]
         };
       });
-    }, 5000);
+    }, 15000);
     return () => window.clearInterval(timer);
-  }, [candidates, diamonds, location.pathname, user]);
+  }, [candidates, diamonds, location.pathname, snoozeUntil, user]);
 
   async function acceptPrompt() {
     if (!prompt) return;
@@ -67,7 +75,16 @@ export default function AutoEngagement() {
   function closeCall() {
     setCallMode(null);
     setPrompt(null);
-    navigate("/recharge", { state: { reason: "Recharge diamonds to continue voice/video calls securely." } });
+    const until = Date.now() + 30 * 60 * 1000;
+    setSnoozeUntil(until);
+    localStorage.setItem("friendHubPromptSnoozeUntil", String(until));
+  }
+
+  function dismissPrompt() {
+    const until = Date.now() + 30 * 60 * 1000;
+    setPrompt(null);
+    setSnoozeUntil(until);
+    localStorage.setItem("friendHubPromptSnoozeUntil", String(until));
   }
 
   if (diamonds > 0) return null;
@@ -81,22 +98,22 @@ export default function AutoEngagement() {
             initial={{ opacity: 0, y: 40, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
-            className="fixed bottom-[118px] left-1/2 z-40 w-[calc(100%-28px)] max-w-[402px] -translate-x-1/2 rounded-[26px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
+            className="fixed bottom-[96px] left-1/2 z-40 w-[min(calc(100%-24px),420px)] -translate-x-1/2 rounded-[24px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
           >
             <div className="flex items-center gap-3">
               <img src={prompt.target.photos?.[0] || sampleProfiles[0].photos[0]} alt="" className="h-14 w-14 rounded-full object-cover" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-black">{prompt.target.name}</p>
                 <p className="truncate text-sm font-semibold text-zinc-500">
-                  {prompt.mode === "message" ? prompt.text : `${prompt.mode === "video" ? "Video" : "Audio"} call incoming`}
+                  {prompt.mode === "message" ? prompt.text : `${prompt.mode === "video" ? "Video" : "Audio"} call`}
                 </p>
               </div>
-              <button onClick={() => setPrompt(null)} className="grid h-9 w-9 place-items-center rounded-full bg-zinc-100 text-zinc-500">
+              <button onClick={dismissPrompt} className="grid h-9 w-9 place-items-center rounded-full bg-zinc-100 text-zinc-500">
                 <X size={18} />
               </button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <button onClick={() => setPrompt(null)} className="rounded-full bg-zinc-100 py-3 text-sm font-black text-zinc-700">Later</button>
+              <button onClick={dismissPrompt} className="rounded-full bg-zinc-100 py-3 text-sm font-black text-zinc-700">Later</button>
               <button onClick={acceptPrompt} className="pink-gradient flex items-center justify-center gap-2 rounded-full py-3 text-sm font-black text-white">
                 {prompt.mode === "video" ? <Video size={18} /> : prompt.mode === "audio" ? <Phone size={18} /> : <MessageCircle size={18} />}
                 {prompt.mode === "message" ? "Reply" : "Answer"}

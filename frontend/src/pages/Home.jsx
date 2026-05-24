@@ -9,7 +9,7 @@ export default function Home() {
       <header className="rounded-b-[2rem] bg-gradient-to-br from-white to-blush px-1 pb-4 pt-2">
         <p className="text-sm font-semibold text-roseDeep">Welcome back</p>
         <h1 className="mt-1 text-3xl font-black">Hi {profile?.name || "Friend"}.</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">Discover verified partners and AI bot profiles. Chat starts simple, recharge when free replies are finished.</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">Discover verified partners and Friend Hub profiles. Chat starts simple, recharge when free replies are finished.</p>
       </header>
 
       <div className="grid grid-cols-3 gap-3">
@@ -30,7 +30,7 @@ export default function Home() {
       <section className="rounded-3xl border border-pink-100 bg-white p-5 shadow-soft">
         <h2 className="text-lg font-bold">MVP Features</h2>
         <div className="mt-4 grid gap-3 text-sm text-slate-600">
-          <p>Firebase Auth login, Firestore chat, profile discovery, bot badges, recharge plans, voice button, and admin-controlled limits.</p>
+          <p>Firebase Auth login, Firestore chat, profile discovery, Friend Hub badges, recharge plans, voice button, and admin-controlled limits.</p>
           <p className="font-semibold text-roseDeep">Voice option is simple and recharge-based.</p>
         </div>
       </section>

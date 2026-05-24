@@ -11,6 +11,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import mediaRoutes from "./routes/mediaRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import partnerRoutes from "./routes/partnerRoutes.js";
 import publicRoutes from "./routes/publicRoutes.js";
 import voiceRoutes from "./routes/voiceRoutes.js";
 
@@ -45,9 +46,17 @@ app.use(express.json({ limit: "70mb" }));
 app.use(apiLimiter);
 
 app.get("/health", (req, res) => res.json({ ok: true, app: "Friend Hub API" }));
+app.get("/", (req, res) => res.json({
+  ok: true,
+  app: "Friend Hub API",
+  health: "/health",
+  publicProfiles: "/api/public/profiles",
+  publicPlans: "/api/public/plans"
+}));
 app.use("/api/admin", adminRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/partner", partnerRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/notifications", notificationRoutes);

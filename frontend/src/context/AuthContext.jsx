@@ -47,6 +47,41 @@ const defaultProfile = (user, timestamp = new Date().toISOString()) => ({
   updatedAt: timestamp
 });
 
+const starterProfiles = [
+  {
+    name: "Aarav",
+    age: 27,
+    gender: "Man",
+    city: "Mumbai, India",
+    bio: "Traveller, startup builder, and coffee explorer.",
+    interests: ["Travel", "Fitness", "Startups", "Music"]
+  },
+  {
+    name: "Meera",
+    age: 25,
+    gender: "Woman",
+    city: "Bangalore, India",
+    bio: "Love to travel, explore new cafes, and capture moments.",
+    interests: ["Travel", "Photography", "Coffee", "Music", "Hiking"]
+  },
+  {
+    name: "Ishita",
+    age: 24,
+    gender: "Woman",
+    city: "Pune, India",
+    bio: "Calm vibes, books, and meaningful conversations.",
+    interests: ["Books", "Movies", "Cooking", "Music"]
+  },
+  {
+    name: "Kabir",
+    age: 28,
+    gender: "Man",
+    city: "Delhi, India",
+    bio: "Gym, weekend rides, and honest chats.",
+    interests: ["Gym", "Biking", "Cricket", "Podcasts"]
+  }
+];
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -153,17 +188,18 @@ export function AuthProvider({ children }) {
         return signInWithPopup(auth, googleProvider);
       },
       enterWithoutLogin: (overrides = {}) => {
+        const seed = starterProfiles[Math.floor(Math.random() * starterProfiles.length)];
         const local = {
           uid: `local_${Date.now()}`,
-          name: "Meera",
-          age: 25,
-          gender: "Woman",
-          city: "Bangalore, India",
+          name: seed.name,
+          age: seed.age,
+          gender: seed.gender,
+          city: seed.city,
           lat: 12.9716,
           lng: 77.5946,
           religion: "",
-          bio: "Love to travel, explore new cafes, and capture moments. Looking for someone who is kind, honest and fun to be with.",
-          interests: ["Travel", "Photography", "Coffee", "Music", "Hiking", "Movies"],
+          bio: seed.bio,
+          interests: seed.interests,
           photos: ["https://images.unsplash.com/photo-1496440737103-cd596325d314?auto=format&fit=crop&w=900&q=85"],
           videos: [],
           role: "user",

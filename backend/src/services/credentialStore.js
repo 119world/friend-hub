@@ -23,6 +23,10 @@ const memory = {
   ]
 };
 
+function clean(value) {
+  return String(value || "").trim();
+}
+
 export function listCredentialResource(name) {
   return memory[name] || [];
 }
@@ -39,7 +43,19 @@ export function upsertCredentialResource(name, item) {
 export function isValidAdminCredential(loginId, password) {
   return memory.adminAccounts.some((account) =>
     account.active !== false &&
-    String(account.loginId || "").trim() === String(loginId || "").trim() &&
+    clean(account.loginId) === clean(loginId) &&
     String(account.password || account.temporaryAccessCode || "") === String(password || "")
   );
+}
+
+export function findPartnerAccountFromMemory(loginId, password) {
+  return memory.partnerAccounts.find((account) =>
+    account.active !== false &&
+    clean(account.loginId) === clean(loginId) &&
+    String(account.password || account.temporaryAccessCode || "") === String(password || "")
+  ) || null;
+}
+
+export function findPartnerAccountByIdFromMemory(id) {
+  return memory.partnerAccounts.find((account) => account.id === id || account.partnerId === id) || null;
 }

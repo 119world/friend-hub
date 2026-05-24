@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Apple, Flame, Heart, ShieldCheck, UserRound, X } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import PhoneStatusBar from "../components/PhoneStatusBar";
 import { useAuth } from "../hooks/useAuth";
 import { defaultWelcome, listenWelcomeConfig } from "../services/appConfig";
+import api from "../services/api";
 
 export default function Login() {
   const { user, loginGoogle, enterWithoutLogin, startPhoneLogin } = useAuth();
@@ -15,12 +16,26 @@ export default function Login() {
   const [showOtp, setShowOtp] = useState(false);
   const [portal, setPortal] = useState("");
   const [portalForm, setPortalForm] = useState({ id: "", password: "" });
+  const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState("");
   const [welcome, setWelcome] = useState(defaultWelcome);
+  const adminAppUrl = useMemo(() => {
+    const envUrl = import.meta.env.VITE_ADMIN_APP_URL;
+    if (envUrl) return envUrl;
+    return "https://friend-hub-admin.vercel.app/login";
+  }, []);
 
   useEffect(() => {
     return listenWelcomeConfig(setWelcome);
   }, []);
+
+  useEffect(() => {
+    if (!portal) return undefined;
+    const timer = window.setTimeout(() => {
+      setPortalForm({ id: "", password: "" });
+    }, 40);
+    return () => window.clearTimeout(timer);
+  }, [portal]);
 
   if (user) return <Navigate to="/" replace />;
 
@@ -60,24 +75,54 @@ export default function Login() {
     }
   }
 
-  function handlePortalLogin() {
+  async function handlePortalLogin() {
     setError("");
+    if (!portalForm.id.trim() || !portalForm.password.trim()) {
+      setError("ID aur password dono fill karo.");
+      return;
+    }
+    setPortalBusy(true);
     if (portal === "admin") {
-      if (portalForm.id === "mdibrahim" && portalForm.password === "Mdid@123") {
-        window.location.href = "http://localhost:5174/login";
-        return;
+      try {
+        await api.get("/admin/dashboard", {
+          headers: {
+            "x-admin-id": portalForm.id.trim(),
+            "x-admin-password": portalForm.password
+          }
+        });
+        if (adminAppUrl) {
+          window.location.href = adminAppUrl;
+          return;
+        }
+        setError("Admin app URL set nahi hai. Frontend env me VITE_ADMIN_APP_URL add karo.");
+      } catch (err) {
+        setError(err.response?.data?.message || "Admin ID/password galat hai.");
+      } finally {
+        setPortalBusy(false);
       }
-      setError("Admin ID/password galat hai.");
       return;
     }
     if (portal === "partner") {
-      if (portalForm.id === "sonu119" && portalForm.password === "Mdid@119") {
-        localStorage.setItem("friendHubPartnerSession", JSON.stringify({ loginId: portalForm.id, partnerId: "partner_sonu119" }));
+      try {
+        const { data } = await api.post("/partner/login", {
+          id: portalForm.id.trim(),
+          password: portalForm.password
+        });
+        localStorage.setItem("friendHubPartnerSession", JSON.stringify({
+          token: data.token,
+          loginId: data.session?.loginId || portalForm.id.trim(),
+          partnerId: data.session?.partnerId,
+          accountId: data.session?.accountId
+        }));
         navigate("/partner");
         return;
+      } catch (err) {
+        setError(err.response?.data?.message || "Partner login failed.");
+      } finally {
+        setPortalBusy(false);
       }
-      setError("Partner ID/password galat hai.");
     }
+    setPortalBusy(false);
   }
 
   const GoogleMark = () => (
@@ -121,22 +166,42 @@ export default function Login() {
             <Apple size={30} fill="currentColor" /> Continue with Apple
           </button>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { setPortal("admin"); setPortalForm({ id: "mdibrahim", password: "Mdid@123" }); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
+            <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
               <ShieldCheck size={18} /> Admin
             </button>
-            <button onClick={() => { setPortal("partner"); setPortalForm({ id: "sonu119", password: "Mdid@119" }); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
+            <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
               <UserRound size={18} /> Partner
             </button>
           </div>
           {portal && (
-            <div className="rounded-[26px] bg-white/95 p-4 text-zinc-900 shadow-xl">
+            <div className="max-h-[72vh] overflow-y-auto rounded-[26px] bg-white/95 p-4 text-zinc-900 shadow-xl">
               <div className="mb-3 flex items-center justify-between">
                 <p className="font-black">{portal === "admin" ? "Admin Login" : "Partner Login"}</p>
-                <button onClick={() => setPortal("")} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
+                <button onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); }} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
               </div>
-              <input value={portalForm.id} onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })} placeholder="ID" className="w-full rounded-full bg-zinc-100 px-5 py-3 outline-none" />
-              <input value={portalForm.password} onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })} type="password" placeholder="Password" className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-3 outline-none" />
-              <button onClick={handlePortalLogin} className="pink-gradient mt-3 w-full rounded-full py-3 font-black text-white">Login</button>
+              <input
+                value={portalForm.id}
+                onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })}
+                placeholder="ID"
+                name={`fh_${portal}_login_id`}
+                autoComplete="new-password"
+                data-lpignore="true"
+                spellCheck={false}
+                className="w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
+              />
+              <input
+                value={portalForm.password}
+                onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })}
+                type="password"
+                placeholder="Password"
+                name={`fh_${portal}_login_password`}
+                autoComplete="new-password"
+                data-lpignore="true"
+                className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
+              />
+              <button disabled={portalBusy} onClick={handlePortalLogin} className="pink-gradient mt-3 w-full rounded-full py-3 font-black text-white disabled:opacity-60">
+                {portalBusy ? "Please wait..." : "Login"}
+              </button>
             </div>
           )}
           {showOtp && (

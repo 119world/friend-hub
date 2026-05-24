@@ -36,7 +36,7 @@ export const sampleProfiles = [
     distanceKm: 3,
     profession: "AI Companion",
     rating: 4.8,
-    bio: "Warm AI friend for relaxed chats.",
+    bio: "Warm Friend Hub profile for relaxed chats.",
     interests: ["Hiking", "Movies", "Food", "Books"],
     online: true,
     verified: true,
