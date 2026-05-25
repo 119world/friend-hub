@@ -19,7 +19,7 @@ import { useAuth } from "../hooks/useAuth";
 const PLAN_FEATURES = {
   first_9: ["Chatting", "Basic Profile Access", "Message Requests", "Limited Support"],
   normal_19: ["Chatting", "500 Diamonds", "Profile Boost", "Basic Support"],
-  offer_49: ["3000 Diamonds", "Most Popular", "More Matches", "Priority Chat"],
+  offer_49: ["3000 Diamonds", "Most Popular", "Profile Highlights", "Priority Chat"],
   premium_99: ["Premium Access", "Extra Diamonds", "Top Visibility", "Priority Support"]
 };
 
@@ -177,7 +177,7 @@ export default function Recharge() {
   }
 
   return (
-    <section className="phone-page px-3 pb-24 pt-3 md:pb-28">
+    <section className="phone-page px-3 pb-20 pt-3 md:pb-28">
       <div className="rounded-[28px] border border-zinc-200 bg-[#faf9fc] p-3">
         <header className="mb-3 flex items-center justify-between rounded-2xl bg-white px-3 py-2">
           <button onClick={() => (step === "plan" ? navigate(-1) : setStep("plan"))} className="rounded-xl bg-zinc-100 p-2" aria-label="Back">
@@ -195,10 +195,13 @@ export default function Recharge() {
         </header>
 
         {location.state?.reason && (
-          <p className="mb-2 rounded-xl bg-[#fff4f8] p-2 text-xs font-semibold text-[#e93078] md:text-sm">
-            {location.state.reason}
-          </p>
-        )}
+            <p className="mb-2 rounded-xl bg-[#fff4f8] p-2 text-xs font-semibold text-[#e93078] md:text-sm">
+              {location.state.reason}
+            </p>
+          )}
+        <p className="mb-2 rounded-xl bg-[#fff4f8] p-2 text-xs font-semibold text-[#e93078] md:text-sm">
+          Recharge credits for premium social features. Credits can be used for chat boosts, profile highlights, and premium visibility.
+        </p>
 
         {error && (
           <p className="mb-2 rounded-xl bg-red-50 p-2 text-xs font-semibold text-red-600 md:text-sm">
@@ -208,11 +211,11 @@ export default function Recharge() {
 
         {step === "plan" && (
           <article className="rounded-[22px] border border-zinc-200 bg-white p-2.5 md:p-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#fff7fb] px-2.5 py-2">
+            <div className="mb-2 flex flex-col items-start gap-2 rounded-xl bg-[#fff7fb] px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-black leading-tight text-[#111626] md:text-3xl">Choose Your Plan</h2>
-              <div className="flex shrink-0 items-center gap-1.5 text-[11px] md:text-sm">
+              <div className="flex w-full items-center justify-between gap-1.5 text-[11px] sm:w-auto sm:justify-start md:text-sm">
                 <span className="rounded-full bg-rose-100 px-2 py-1 font-black text-[#f72565]">Limited Time Offer</span>
-                <span className="font-black text-emerald-600">Save up to 75%</span>
+                <span className="text-right font-black text-emerald-600">Save up to 75%</span>
               </div>
             </div>
 
@@ -222,7 +225,7 @@ export default function Recharge() {
                 return (
                   <div
                     key={plan.id}
-                    className={`relative rounded-2xl border p-2.5 ${
+                    className={`relative rounded-2xl border p-2 ${
                       active ? "border-[#f72565] bg-[#fff6fa]" : "border-zinc-200 bg-white"
                     }`}
                   >
@@ -232,13 +235,13 @@ export default function Recharge() {
                       </span>
                     )}
                     <p className="text-xs font-black text-zinc-500">{plan.title}</p>
-                    <p className="text-sm font-black text-zinc-400 line-through">₹{plan.originalPrice}</p>
-                    <p className="text-4xl font-black leading-none text-[#f72565]">₹{plan.price}</p>
-                    <p className="mt-1 inline-flex rounded-full bg-[#ffe5f1] px-2 py-0.5 text-[11px] font-black text-[#f72565]">
+                    <p className="text-xs font-black text-zinc-400 line-through">₹{plan.originalPrice}</p>
+                    <p className="text-3xl font-black leading-none text-[#f72565]">₹{plan.price}</p>
+                    <p className="mt-1 inline-flex rounded-full bg-[#ffe5f1] px-2 py-0.5 text-[10px] font-black text-[#f72565]">
                       DISCOUNT ₹{plan.discountAmount}
                     </p>
                     <p className="mt-1 text-sm font-black text-emerald-600">You save {plan.savePercent}%</p>
-                    <ul className="mt-1.5 space-y-1 text-[12px] font-semibold text-zinc-700">
+                    <ul className="mt-1.5 space-y-1 text-[11px] font-semibold text-zinc-700">
                       {(PLAN_FEATURES[plan.id] || []).slice(0, 4).map((feature) => (
                         <li key={feature} className="flex items-center gap-1.5">
                           <CheckCircle2 size={13} className="shrink-0 text-[#f72565]" />
@@ -373,6 +376,9 @@ export default function Recharge() {
         )}
 
         <div className="mt-2 text-center text-xs font-semibold text-zinc-500 md:text-sm">
+          Payments are collected only for digital credits and premium social networking features.
+        </div>
+        <div className="mt-1 text-center text-xs font-semibold text-zinc-500 md:text-sm">
           100% Secure Payments Powered by <span className="font-black text-[#1142a7]">Razorpay</span>
         </div>
 

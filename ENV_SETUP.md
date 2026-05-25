@@ -20,6 +20,7 @@ Structure:
 
 ```env
 VITE_API_BASE_URL=https://friend-hub-backend.onrender.com
+VITE_ADMIN_APP_URL=https://friend-hub-admin.vercel.app/login
 VITE_FIREBASE_API_KEY=xxxx
 VITE_FIREBASE_AUTH_DOMAIN=xxxx.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=xxxx

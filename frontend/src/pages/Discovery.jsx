@@ -97,7 +97,7 @@ export default function Discovery() {
 
   const menuItems = [
     { label: "Discover", icon: Heart, action: () => navigate("/discovery") },
-    { label: "Matches", icon: Star, action: () => navigate("/matches") },
+    { label: "Connections", icon: Star, action: () => navigate("/matches") },
     { label: "Messages", icon: MessageCircle, action: () => navigate("/messages") },
     { label: "Profile", icon: User, action: () => navigate("/profile") },
     { label: "Recharge", icon: Settings, action: () => navigate("/recharge") }
@@ -108,7 +108,7 @@ export default function Discovery() {
       <PhoneStatusBar />
       <header className="grid grid-cols-3 items-center pb-8 pt-7">
         <button onClick={() => setMenuOpen(true)} className="justify-self-start rounded-full p-2 text-black active:bg-zinc-100"><Menu size={30} /></button>
-        <h1 className="justify-self-center text-[22px] font-black">Discover</h1>
+        <h1 className="justify-self-center text-[22px] font-black">Discover New Friends</h1>
         <button onClick={() => setFilterOpen(true)} className="justify-self-end rounded-full p-2 text-black active:bg-zinc-100"><SlidersHorizontal size={30} /></button>
       </header>
 
@@ -186,7 +186,7 @@ export default function Discovery() {
         <button onClick={nextCard} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-amber-400 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><RotateCcw size={33} strokeWidth={3} /></button>
         <button onClick={nextCard} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-red-400 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><X size={36} strokeWidth={3} /></button>
         <button onClick={() => handleChat(profile)} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-[#f72565] shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Heart size={36} fill="currentColor" strokeWidth={0} /></button>
-        <button onClick={() => navigate("/recharge", { state: { reason: "Voice call needs diamonds after free preview." } })} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-purple-500 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Star size={36} fill="currentColor" strokeWidth={0} /></button>
+        <button onClick={() => navigate("/recharge", { state: { reason: "Recharge credits for premium social features." } })} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-purple-500 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Star size={36} fill="currentColor" strokeWidth={0} /></button>
       </div>
 
       <AnimatePresence>
@@ -230,13 +230,14 @@ export default function Discovery() {
         {filterOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setFilterOpen(false)} className="fixed inset-0 z-40 bg-black/35" />
-            <motion.div
-              initial={{ y: 340 }}
-              animate={{ y: 0 }}
-              exit={{ y: 340 }}
-              transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              className="fixed bottom-0 left-1/2 z-50 w-full max-w-[430px] -translate-x-1/2 rounded-t-[32px] bg-white p-6 shadow-2xl"
-            >
+            <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center overflow-x-hidden">
+              <motion.div
+                initial={{ y: 340 }}
+                animate={{ y: 0 }}
+                exit={{ y: 340 }}
+                transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                className="w-[min(100vw,430px)] max-w-full max-[430px]:rounded-none rounded-t-[32px] bg-white p-6 shadow-2xl max-h-[100dvh] overflow-y-auto overflow-x-hidden"
+              >
               <div className="mx-auto mb-5 h-1.5 w-14 rounded-full bg-zinc-200" />
               <h2 className="text-2xl font-black">Filters</h2>
               <div className="mt-5 grid grid-cols-3 gap-2">
@@ -275,7 +276,8 @@ export default function Discovery() {
               </div>
               <input value={filters.interest} onChange={(e) => setFilters((old) => ({ ...old, interest: e.target.value }))} className="mt-4 w-full rounded-2xl bg-zinc-100 px-4 py-3 outline-none" placeholder="Interest e.g. travel" />
               <button onClick={() => setFilterOpen(false)} className="pink-gradient mt-6 w-full rounded-full py-4 font-black text-white">Apply Filters</button>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

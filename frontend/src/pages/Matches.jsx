@@ -79,16 +79,16 @@ export default function Matches({ mode = "matches" }) {
     <section className="phone-page px-6">
       <PhoneStatusBar />
       <header className="pb-7 pt-7 text-center">
-        <h1 className="text-[25px] font-black">{mode === "likes" ? "Likes" : mode === "messages" ? "Messages" : "Matches"}</h1>
+        <h1 className="text-[25px] font-black">{mode === "likes" ? "Likes" : mode === "messages" ? "Messages" : "Connections"}</h1>
       </header>
 
       <label className="flex h-[58px] items-center gap-3 rounded-full bg-zinc-100 px-5 text-zinc-400">
         <Search size={25} />
-        <input className="w-full bg-transparent text-[18px] outline-none placeholder:text-zinc-400" placeholder="Search matches" />
+        <input className="w-full bg-transparent text-[18px] outline-none placeholder:text-zinc-400" placeholder="Search connections" />
       </label>
 
       <section className="mt-8">
-        <h2 className="text-[23px] font-black">New Matches</h2>
+        <h2 className="text-[23px] font-black">New Connections</h2>
         <div className="mt-5 flex gap-7 overflow-x-auto pb-2">
           <Link to="/likes" className="shrink-0 text-center">
             <div className="relative h-[82px] w-[82px] rounded-full bg-gradient-to-br from-amber-400 to-[#f72565] p-[3px]">

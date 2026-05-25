@@ -4,9 +4,9 @@ const POLL_MS = 30000;
 
 export const defaultPlans = [
   { id: "first_9", title: "First-time Offer", originalPrice: 19, price: 9, diamonds: 30, minutes: 1, active: true, subscription: false, autoPay: true, autoPayAmount: 9 },
-  { id: "normal_19", title: "Starter", originalPrice: 19, price: 19, diamonds: 50, minutes: 1, active: true, subscription: false, autoPay: true, autoPayAmount: 19 },
-  { id: "offer_49", title: "Friend Offer", originalPrice: 99, price: 49, diamonds: 160, minutes: 4, active: true, subscription: false, autoPay: true, autoPayAmount: 49 },
-  { id: "premium_99", title: "Premium Offer", originalPrice: 199, price: 99, diamonds: 360, minutes: 10, active: true, subscription: true, autoPay: true, autoPayAmount: 99 }
+  { id: "normal_19", title: "Starter", originalPrice: 49, price: 19, diamonds: 50, minutes: 1, active: true, subscription: false, autoPay: true, autoPayAmount: 19 },
+  { id: "offer_49", title: "Friend Offer", originalPrice: 199, price: 49, diamonds: 160, minutes: 4, active: true, subscription: false, autoPay: true, autoPayAmount: 49 },
+  { id: "premium_99", title: "Premium Offer", originalPrice: 399, price: 99, diamonds: 360, minutes: 10, active: true, subscription: true, autoPay: true, autoPayAmount: 99 }
 ];
 
 export const defaultReplyConfig = {
@@ -20,8 +20,8 @@ export const defaultReplyConfig = {
 };
 
 export const defaultWelcome = {
-  title: "Find Your Perfect Match",
-  subtitle: "Join millions of people looking for meaningful connections.",
+  title: "Meet New Friends. Build Real Connections.",
+  subtitle: "Friend Hub is a social networking platform where users can discover people, chat safely, and build interest-based friendships.",
   bgPhoto: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=1200&q=85",
   maintenanceMode: false,
   maintenanceTitle: "Friend Hub is updating",

@@ -8,3 +8,15 @@
 9:47:37 AM [vite] hmr update /src/pages/Login.jsx, /src/index.css, /src/pages/ChatRoom.jsx, /src/pages/Matches.jsx, /src/pages/Discovery.jsx, /src/pages/TargetProfile.jsx, /src/pages/Recharge.jsx, /src/components/AutoEngagement.jsx
 9:49:09 AM [vite] hmr update /src/context/AuthContext.jsx, /src/index.css
 9:49:09 AM [vite] hmr update /src/pages/Recharge.jsx, /src/index.css
+2:12:41 PM [vite] page reload tailwind.config.js
+3:21:57 PM [vite] .env changed, restarting server...
+3:21:57 PM [vite] .env changed, restarting server...
+3:21:57 PM [vite] server restarted.
+3:39:49 PM [vite] hmr update /src/index.css, /src/pages/Recharge.jsx, /src/pages/ChatRoom.jsx, /src/pages/TargetProfile.jsx, /src/pages/Matches.jsx, /src/pages/Login.jsx, /src/components/MaintenanceGate.jsx, /src/pages/Discovery.jsx, /src/components/AutoEngagement.jsx
+3:39:49 PM [vite] hmr update /src/index.css, /src/pages/TargetProfile.jsx, /src/pages/ChatRoom.jsx, /src/pages/Recharge.jsx, /src/pages/Matches.jsx, /src/pages/Login.jsx, /src/components/MaintenanceGate.jsx, /src/pages/Discovery.jsx, /src/components/AutoEngagement.jsx
+3:39:49 PM [vite] hmr update /src/App.jsx, /src/index.css
+3:43:57 PM [vite] hmr update /src/context/AuthContext.jsx, /src/index.css
+3:43:57 PM [vite] hmr update /src/index.css, /src/pages/Recharge.jsx, /src/pages/ChatRoom.jsx, /src/pages/TargetProfile.jsx, /src/pages/Matches.jsx, /src/pages/Login.jsx, /src/components/MaintenanceGate.jsx, /src/pages/Discovery.jsx, /src/components/AutoEngagement.jsx
+3:43:57 PM [vite] hmr update /src/index.css, /src/pages/TargetProfile.jsx, /src/pages/ChatRoom.jsx, /src/pages/Matches.jsx, /src/pages/Discovery.jsx, /src/components/AutoEngagement.jsx
+3:43:57 PM [vite] hmr invalidate /src/context/AuthContext.jsx Could not Fast Refresh ("AuthContext" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:43:57 PM [vite] page reload src/context/AuthContext.jsx

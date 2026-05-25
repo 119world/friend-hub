@@ -135,8 +135,8 @@ export const defaultLocalStore = {
   appSettings: [
     {
       id: "welcome",
-      title: "Find Your Perfect Match",
-      subtitle: "Join millions of people looking for meaningful connections.",
+      title: "Meet New Friends. Build Real Connections.",
+      subtitle: "Friend Hub is a social networking platform where users can discover people, chat safely, and build interest-based friendships.",
       bgPhoto: "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=1200&q=85",
       maintenanceMode: false,
       maintenanceTitle: "Friend Hub is updating",

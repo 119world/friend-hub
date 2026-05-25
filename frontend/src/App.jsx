@@ -6,8 +6,11 @@ import { useAuth } from "./hooks/useAuth";
 
 const ChatRoom = lazy(() => import("./pages/ChatRoom"));
 const Discovery = lazy(() => import("./pages/Discovery"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const Likes = lazy(() => import("./pages/Likes"));
 const Login = lazy(() => import("./pages/Login"));
 const Matches = lazy(() => import("./pages/Matches"));
+const Messages = lazy(() => import("./pages/Messages"));
 const PartnerPortal = lazy(() => import("./pages/PartnerPortal"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Recharge = lazy(() => import("./pages/Recharge"));
@@ -30,6 +33,13 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/partner" element={<PartnerPortal />} />
+          <Route path="/about" element={<LegalPage />} />
+          <Route path="/contact" element={<LegalPage />} />
+          <Route path="/privacy" element={<LegalPage />} />
+          <Route path="/terms" element={<LegalPage />} />
+          <Route path="/refund" element={<LegalPage />} />
+          <Route path="/safety" element={<LegalPage />} />
+          <Route path="/abuse" element={<LegalPage />} />
           <Route
             path="/*"
             element={
@@ -38,9 +48,9 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Discovery />} />
                     <Route path="/discovery" element={<Discovery />} />
-                    <Route path="/likes" element={<Matches mode="likes" />} />
+                    <Route path="/likes" element={<Likes />} />
                     <Route path="/matches" element={<Matches />} />
-                    <Route path="/messages" element={<Matches mode="messages" />} />
+                    <Route path="/messages" element={<Messages />} />
                     <Route path="/chat/:chatId" element={<ChatRoom />} />
                     <Route path="/people/:targetId" element={<TargetProfile />} />
                     <Route path="/profile" element={<Profile />} />

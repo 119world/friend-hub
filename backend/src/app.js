@@ -27,11 +27,17 @@ const allowedOrigins = new Set([
   "http://localhost:5500",
   "http://127.0.0.1:5500"
 ].filter(Boolean));
+const vercelOriginPatterns = [
+  /^https:\/\/friend-hub(?:-[a-z0-9-]+)?\.vercel\.app$/i,
+  /^https:\/\/friend-hub-admin(?:-[a-z0-9-]+)?\.vercel\.app$/i
+];
 
 app.use(helmet());
 app.use(cors({
   origin(origin, cb) {
-    if (!origin || allowedOrigins.has(origin)) return cb(null, true);
+    if (!origin || allowedOrigins.has(origin) || vercelOriginPatterns.some((pattern) => pattern.test(origin))) {
+      return cb(null, true);
+    }
     return cb(new Error("CORS origin blocked"));
   },
   credentials: true

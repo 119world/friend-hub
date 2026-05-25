@@ -103,6 +103,7 @@ Frontend environment variables:
 
 ```env
 VITE_API_BASE_URL=https://your-render-service.onrender.com
+VITE_ADMIN_APP_URL=https://your-admin-app.vercel.app/login
 VITE_FIREBASE_API_KEY=your-web-api-key
 VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your-project-id

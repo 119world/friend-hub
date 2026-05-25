@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Apple, Flame, Heart, ShieldCheck, UserRound, X } from "lucide-react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import PhoneStatusBar from "../components/PhoneStatusBar";
 import { useAuth } from "../hooks/useAuth";
@@ -16,12 +16,15 @@ export default function Login() {
   const [showOtp, setShowOtp] = useState(false);
   const [portal, setPortal] = useState("");
   const [portalForm, setPortalForm] = useState({ id: "", password: "" });
+  const [portalNonce, setPortalNonce] = useState(() => Date.now());
   const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState("");
   const [welcome, setWelcome] = useState(defaultWelcome);
   const adminAppUrl = useMemo(() => {
-    const envUrl = import.meta.env.VITE_ADMIN_APP_URL;
-    if (envUrl) return envUrl;
+    const envUrl = String(import.meta.env.VITE_ADMIN_APP_URL || "").trim();
+    const isLocalHostEnv = /localhost|127\.0\.0\.1/i.test(envUrl);
+    const isLocalHostPage = /localhost|127\.0\.0\.1/i.test(window.location.hostname);
+    if (envUrl && !(isLocalHostEnv && !isLocalHostPage)) return envUrl;
     return "https://friend-hub-admin.vercel.app/login";
   }, []);
 
@@ -33,6 +36,7 @@ export default function Login() {
     if (!portal) return undefined;
     const timer = window.setTimeout(() => {
       setPortalForm({ id: "", password: "" });
+      setPortalNonce(Date.now());
     }, 40);
     return () => window.clearTimeout(timer);
   }, [portal]);
@@ -112,7 +116,10 @@ export default function Login() {
           token: data.token,
           loginId: data.session?.loginId || portalForm.id.trim(),
           partnerId: data.session?.partnerId,
-          accountId: data.session?.accountId
+          accountId: data.session?.accountId,
+          role: data.session?.role,
+          canManageAll: Boolean(data.session?.canManageAll),
+          mainAccountId: data.session?.mainAccountId || data.session?.accountId
         }));
         navigate("/partner");
         return;
@@ -166,44 +173,60 @@ export default function Login() {
             <Apple size={30} fill="currentColor" /> Continue with Apple
           </button>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
+            <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
               <ShieldCheck size={18} /> Admin
             </button>
-            <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
+            <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
               <UserRound size={18} /> Partner
             </button>
           </div>
           {portal && (
             <div className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px]">
-              <div className="absolute inset-x-3 bottom-3 max-h-[70dvh] overflow-y-auto rounded-[26px] bg-white p-4 text-zinc-900 shadow-xl">
+              <form
+                autoComplete="off"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!portalBusy) handlePortalLogin();
+                }}
+                className="absolute inset-x-3 bottom-3 max-h-[72dvh] overflow-y-auto rounded-[26px] bg-white p-4 text-zinc-900 shadow-xl"
+              >
                 <div className="mb-3 flex items-center justify-between">
                   <p className="font-black">{portal === "admin" ? "Admin Login" : "Partner Login"}</p>
-                  <button onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); }} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
+                  <button onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
                 </div>
+                <input className="hidden" type="text" name={`fh_${portalNonce}_hidden_user`} autoComplete="username" readOnly />
+                <input className="hidden" type="password" name={`fh_${portalNonce}_hidden_pass`} autoComplete="current-password" readOnly />
                 <input
+                  key={`id_${portal}_${portalNonce}`}
                   value={portalForm.id}
                   onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })}
                   placeholder="ID"
-                  name={`fh_${portal}_login_id`}
-                  autoComplete="new-password"
+                  name={`fh_${portal}_${portalNonce}_id`}
+                  autoComplete="off"
                   data-lpignore="true"
+                  data-1p-ignore
+                  data-form-type="other"
+                  autoCapitalize="off"
                   spellCheck={false}
                   className="w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
                 />
                 <input
+                  key={`pass_${portal}_${portalNonce}`}
                   value={portalForm.password}
                   onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })}
                   type="password"
                   placeholder="Password"
-                  name={`fh_${portal}_login_password`}
-                  autoComplete="new-password"
+                  name={`fh_${portal}_${portalNonce}_password`}
+                  autoComplete="off"
                   data-lpignore="true"
+                  data-1p-ignore
+                  data-form-type="other"
                   className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
                 />
-                <button disabled={portalBusy} onClick={handlePortalLogin} className="pink-gradient mt-3 h-11 w-full rounded-full font-black text-white disabled:opacity-60">
+                <button type="submit" disabled={portalBusy} className="pink-gradient mt-3 h-11 w-full rounded-full font-black text-white disabled:opacity-60">
                   {portalBusy ? "Please wait..." : "Login"}
                 </button>
-              </div>
+              </form>
             </div>
           )}
           {showOtp && (
@@ -230,6 +253,18 @@ export default function Login() {
           <p className="text-center text-base font-medium text-white/90">
             Already have an account? <button onClick={() => setShowOtp(true)} className="font-black text-[#ff3f8d]">Log in</button>
           </p>
+          <p className="text-center text-xs font-medium text-white/85">
+            Friend Hub is a social networking and friendship platform. It is not an adult, escort, or matrimonial service.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-semibold text-white">
+            <Link to="/about">About</Link>
+            <Link to="/contact">Contact</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
+            <Link to="/refund">Refund</Link>
+            <Link to="/safety">Safety</Link>
+            <Link to="/abuse">Report Abuse</Link>
+          </div>
           {error && <p className="rounded-2xl bg-white/90 p-3 text-sm text-red-500">{error}</p>}
           <div id="recaptcha-container" />
         </div>
