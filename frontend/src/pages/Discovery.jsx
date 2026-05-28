@@ -13,8 +13,8 @@ export default function Discovery() {
   const { user, profile: myProfile, logout } = useAuth();
   const navigate = useNavigate();
   const [remote, setRemote] = useState([]);
-  const [index, setIndex] = useState(0);
-  const [photoIndex, setPhotoIndex] = useState(0);
+  const [dismissedIds, setDismissedIds] = useState([]);
+  const [photoIndexes, setPhotoIndexes] = useState({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
@@ -39,58 +39,77 @@ export default function Discovery() {
     });
     return filtered.length ? filtered : source;
   }, [remote, filters, myProfile]);
-  const profile = profiles[index % profiles.length] || sampleProfiles[0];
-  const media = [
-    ...(profile?.photos?.length ? profile.photos.slice(0, 7).map((url) => ({ type: "image", url })) : []),
-    ...(profile?.videos?.length ? profile.videos.slice(0, 3).map((url) => ({ type: "video", url })) : [])
-  ];
-  const visibleMedia = media[photoIndex % media.length] || { type: "image", url: sampleProfiles[0].photos[0] };
+  const visibleProfiles = useMemo(() => {
+    const available = profiles.filter((item) => !dismissedIds.includes(item.id));
+    return available.length ? available : profiles;
+  }, [dismissedIds, profiles]);
 
   useEffect(() => {
     return listenPublicProfiles(setRemote);
   }, []);
 
   useEffect(() => {
-    setPhotoIndex(0);
-  }, [profile?.id]);
-
-  useEffect(() => {
-    setIndex(0);
+    setDismissedIds([]);
+    setPhotoIndexes({});
   }, [filters]);
 
   useEffect(() => {
-    if (media.length <= 1) return undefined;
+    const firstProfile = visibleProfiles[0];
+    const mediaLength = getMedia(firstProfile).length;
+    if (!firstProfile || mediaLength <= 1) return undefined;
     const timer = setInterval(() => {
-      setPhotoIndex((value) => (value + 1) % media.length);
+      setPhotoIndexes((old) => ({
+        ...old,
+        [firstProfile.id]: ((old[firstProfile.id] || 0) + 1) % mediaLength
+      }));
     }, 3500);
     return () => clearInterval(timer);
-  }, [media.length, profile?.id]);
+  }, [visibleProfiles]);
 
-  async function handleChat(target = profile) {
+  function getMedia(target) {
+    return [
+      ...(target?.photos?.length ? target.photos.slice(0, 7).map((url) => ({ type: "image", url })) : []),
+      ...(target?.videos?.length ? target.videos.slice(0, 3).map((url) => ({ type: "video", url })) : [])
+    ];
+  }
+
+  function openProfile(target) {
+    navigate(`/people/${target.id}`, { state: { profile: target } });
+  }
+
+  async function handleChat(target) {
     const chatId = await openChat({ user, target });
     navigate(`/chat/${chatId}`);
   }
 
-  function nextCard() {
-    setIndex((value) => value + 1);
+  function nextCard(target) {
+    setDismissedIds((old) => old.includes(target.id) ? old : [...old, target.id]);
   }
 
-  function prevPhoto() {
+  function prevPhoto(target) {
+    const media = getMedia(target);
     if (!media.length) return;
-    setPhotoIndex((value) => (value - 1 + media.length) % media.length);
+    setPhotoIndexes((old) => ({
+      ...old,
+      [target.id]: ((old[target.id] || 0) - 1 + media.length) % media.length
+    }));
   }
 
-  function nextPhoto() {
+  function nextPhoto(target) {
+    const media = getMedia(target);
     if (!media.length) return;
-    setPhotoIndex((value) => (value + 1) % media.length);
+    setPhotoIndexes((old) => ({
+      ...old,
+      [target.id]: ((old[target.id] || 0) + 1) % media.length
+    }));
   }
 
-  function handleTouchEnd(event) {
-    if (touchStart == null) return;
+  function handleTouchEnd(event, target) {
+    if (touchStart?.id !== target.id) return;
     const end = event.changedTouches[0].clientX;
-    const diff = touchStart - end;
+    const diff = touchStart.x - end;
     if (Math.abs(diff) > 40) {
-      diff > 0 ? nextPhoto() : prevPhoto();
+      diff > 0 ? nextPhoto(target) : prevPhoto(target);
     }
     setTouchStart(null);
   }
@@ -104,7 +123,7 @@ export default function Discovery() {
   ];
 
   return (
-    <section className="phone-page">
+    <section className="phone-page discover-page">
       <PhoneStatusBar />
       <header className="grid grid-cols-[44px_1fr_44px] items-center pb-4 pt-5">
         <button onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center justify-self-start rounded-full text-black active:bg-zinc-100"><Menu size={28} /></button>
@@ -112,85 +131,106 @@ export default function Discovery() {
         <button onClick={() => setFilterOpen(true)} className="grid h-11 w-11 place-items-center justify-self-end rounded-full text-black active:bg-zinc-100"><SlidersHorizontal size={28} /></button>
       </header>
 
-      <motion.article
-        key={profile.id}
-        initial={{ opacity: 0, scale: 0.96, y: 18 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        onTouchStart={(event) => setTouchStart(event.touches[0].clientX)}
-        onTouchEnd={handleTouchEnd}
-        className="mock-card-shadow relative h-[min(62dvh,500px)] min-h-[390px] overflow-hidden rounded-[26px] bg-zinc-100"
-      >
-        <AnimatePresence mode="wait">
-          {visibleMedia.type === "video" ? (
-            <motion.video
-              key={visibleMedia.url}
-              src={visibleMedia.url}
-              muted
-              loop
-              playsInline
-              autoPlay
-              initial={{ opacity: 0, scale: 1.03 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.35 }}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            <motion.img
-              key={visibleMedia.url}
-              src={visibleMedia.url}
-              alt={profile.name}
-              initial={{ opacity: 0, scale: 1.03 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.35 }}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          )}
-        </AnimatePresence>
-        <div className="absolute inset-0 glass-gradient" />
-        <div className="absolute left-4 top-4 rounded-full bg-[#ff2f7e] px-4 py-2 text-sm font-black text-white">{profile.type === "bot" ? "Friend Hub" : "New here"}</div>
-        <div className="absolute right-4 top-4 rounded-full border border-white/45 bg-black/25 px-3 py-1.5 text-sm font-black text-white">{photoIndex + 1}/{media.length || 1}</div>
-        {media.length > 1 && (
-          <>
-            <button onClick={prevPhoto} className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronLeft size={25} /></button>
-            <button onClick={nextPhoto} className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronRight size={25} /></button>
-            <div className="absolute left-5 right-5 top-[72px] flex gap-1.5">
-              {media.map((item, idx) => (
-                <button key={item.url} onClick={() => setPhotoIndex(idx)} className="flex h-11 flex-1 items-start pt-3" aria-label={`Show media ${idx + 1}`}>
-                  <span className={`h-1.5 w-full rounded-full ${idx === photoIndex ? "bg-white" : "bg-white/35"}`} />
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-        <div className="absolute bottom-5 left-4 right-4 text-white">
-          <div className="flex items-center gap-2">
-            <h2 className="min-w-0 truncate text-[28px] font-black leading-none min-[390px]:text-[32px]">{profile.name}, {profile.age}</h2>
-            {profile.verified !== false && <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-500 text-white"><Check size={19} strokeWidth={4} /></span>}
-          </div>
-          <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold min-[390px]:text-base"><Briefcase size={19} className="shrink-0" /> <span className="truncate">{profile.profession || "Product Designer"}</span></p>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="flex min-w-0 items-center gap-2 text-sm font-semibold min-[390px]:text-base"><MapPin size={20} className="shrink-0" /> <span className="truncate">{profile.city || "Mumbai, India"}</span></p>
-            <button onClick={() => navigate(`/people/${profile.id}`, { state: { profile } })} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-white text-white"><Info size={26} /></button>
-          </div>
-          <p className="mt-3 flex items-center gap-2 text-sm font-black text-white/90"><Navigation size={16} /> {Number(profile.distanceKm || 2)} km nearby</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {(profile.interests || []).slice(0, 3).map((item) => (
-              <span key={item} className="rounded-full bg-white/18 px-3 py-1 text-xs font-black">{item}</span>
-            ))}
-          </div>
-        </div>
-      </motion.article>
-
-      <div className="mt-5 grid grid-cols-4 gap-3 px-2 min-[390px]:gap-5 min-[390px]:px-4">
-        <button onClick={nextCard} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-amber-400 shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><RotateCcw size={29} strokeWidth={3} /></button>
-        <button onClick={nextCard} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-red-400 shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><X size={31} strokeWidth={3} /></button>
-        <button onClick={() => handleChat(profile)} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-[#f72565] shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><Heart size={31} fill="currentColor" strokeWidth={0} /></button>
-        <button onClick={() => navigate("/recharge", { state: { reason: "Recharge credits for premium social features." } })} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-purple-500 shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><Star size={31} fill="currentColor" strokeWidth={0} /></button>
+      <div className="space-y-5">
+        {visibleProfiles.map((item, cardIndex) => {
+          const media = getMedia(item);
+          const photoIndex = photoIndexes[item.id] || 0;
+          const visibleMedia = media[photoIndex % media.length] || { type: "image", url: sampleProfiles[0].photos[0] };
+          return (
+            <motion.article
+              key={item.id}
+              layout
+              initial={{ opacity: 0, scale: 0.98, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.22, delay: Math.min(cardIndex * 0.025, 0.12) }}
+              onClick={() => openProfile(item)}
+              onTouchStart={(event) => setTouchStart({ id: item.id, x: event.touches[0].clientX })}
+              onTouchEnd={(event) => handleTouchEnd(event, item)}
+              className="mock-card-shadow overflow-hidden rounded-[28px] bg-white active:scale-[0.99]"
+            >
+              <div className="relative h-[min(82vw,410px)] min-h-[318px] overflow-hidden bg-zinc-100">
+                <AnimatePresence mode="wait">
+                  {visibleMedia.type === "video" ? (
+                    <motion.video
+                      key={visibleMedia.url}
+                      src={visibleMedia.url}
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      initial={{ opacity: 0, scale: 1.03 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.35 }}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <motion.img
+                      key={visibleMedia.url}
+                      src={visibleMedia.url}
+                      alt={item.name}
+                      initial={{ opacity: 0, scale: 1.03 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.35 }}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
+                </AnimatePresence>
+                <div className="absolute inset-0 glass-gradient" />
+                <div className="absolute left-4 top-4 rounded-full bg-[#ff2f7e] px-4 py-2 text-sm font-black text-white">{item.type === "bot" ? "Friend Hub" : "New here"}</div>
+                <div className="absolute right-4 top-4 rounded-full border border-white/45 bg-black/25 px-3 py-1.5 text-sm font-black text-white">{photoIndex + 1}/{media.length || 1}</div>
+                {media.length > 1 && (
+                  <>
+                    <button onClick={(event) => { event.stopPropagation(); prevPhoto(item); }} className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronLeft size={25} /></button>
+                    <button onClick={(event) => { event.stopPropagation(); nextPhoto(item); }} className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronRight size={25} /></button>
+                    <div className="absolute left-5 right-5 top-[72px] flex gap-1.5">
+                      {media.map((mediaItem, idx) => (
+                        <button
+                          key={mediaItem.url}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPhotoIndexes((old) => ({ ...old, [item.id]: idx }));
+                          }}
+                          className="flex h-11 flex-1 items-start pt-3"
+                          aria-label={`Show media ${idx + 1}`}
+                        >
+                          <span className={`h-1.5 w-full rounded-full ${idx === photoIndex ? "bg-white" : "bg-white/35"}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <div className="absolute bottom-5 left-4 right-4 text-white">
+                  <div className="flex items-center gap-2">
+                    <h2 className="min-w-0 truncate text-[30px] font-black leading-none min-[390px]:text-[34px]">{item.name}, {item.age}</h2>
+                    {item.verified !== false && <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-500 text-white"><Check size={19} strokeWidth={4} /></span>}
+                  </div>
+                  <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold min-[390px]:text-base"><Briefcase size={19} className="shrink-0" /> <span className="truncate">{item.profession || item.personality || "Friend Hub Partner"}</span></p>
+                  <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold min-[390px]:text-base"><MapPin size={20} className="shrink-0" /> <span className="truncate">{item.location || item.city || "Nearby"}</span></p>
+                </div>
+              </div>
+              <div className="px-4 pb-4 pt-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-black text-zinc-500"><Navigation size={16} className="shrink-0" /> {Number(item.distanceKm || 2)} km nearby</p>
+                  <button onClick={(event) => { event.stopPropagation(); openProfile(item); }} className="flex shrink-0 items-center gap-1 rounded-full bg-[#fff0f5] px-3 py-2 text-xs font-black text-[#f72565]"><Info size={15} /> View</button>
+                </div>
+                <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-zinc-600">{item.bio || "Verified profile for friendly chat and calls."}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(item.interests || []).slice(0, 4).map((interest) => (
+                    <span key={interest} className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-600">{interest}</span>
+                  ))}
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <button onClick={(event) => { event.stopPropagation(); nextCard(item); }} className="flex min-h-12 items-center justify-center gap-1 rounded-full bg-zinc-100 px-2 text-sm font-black text-zinc-600"><X size={18} /> Pass</button>
+                  <button onClick={(event) => { event.stopPropagation(); handleChat(item); }} className="flex min-h-12 items-center justify-center gap-1 rounded-full bg-[#fff0f5] px-2 text-sm font-black text-[#f72565]"><Heart size={18} fill="currentColor" /> Like</button>
+                  <button onClick={(event) => { event.stopPropagation(); handleChat(item); }} className="pink-gradient flex min-h-12 items-center justify-center gap-1 rounded-full px-2 text-sm font-black text-white"><MessageCircle size={18} /> Chat</button>
+                </div>
+              </div>
+            </motion.article>
+          );
+        })}
       </div>
-      <p className="mt-3 text-center text-sm font-black text-[#f72565]">Connect with People</p>
 
       <AnimatePresence>
         {menuOpen && (

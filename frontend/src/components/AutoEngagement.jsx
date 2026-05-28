@@ -73,6 +73,17 @@ export default function AutoEngagement() {
     navigate("/recharge", { state: { reason: `Recharge diamonds to answer ${prompt.target.name}'s ${prompt.mode} call.` } });
   }
 
+  async function openPromptTarget() {
+    if (!prompt) return;
+    if (prompt.mode === "message") {
+      await acceptPrompt();
+      return;
+    }
+    const target = prompt.target;
+    setPrompt(null);
+    navigate(`/people/${target.id}`, { state: { profile: target } });
+  }
+
   function closeCall() {
     setCallMode(null);
     setPrompt(null);
@@ -94,33 +105,37 @@ export default function AutoEngagement() {
     <>
       <AnimatePresence>
         {prompt && !callMode && (
-          <motion.div
-            key={prompt.id}
-            initial={{ opacity: 0, y: 40, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 25, scale: 0.98 }}
-            className="fixed bottom-[88px] left-1/2 z-40 w-[calc(100%-16px)] max-w-[420px] -translate-x-1/2 rounded-[24px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
-          >
-            <div className="flex items-center gap-3">
-              <img src={prompt.target.photos?.[0] || sampleProfiles[0].photos[0]} alt="" className="h-14 w-14 rounded-full object-cover" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-black">{prompt.target.name}</p>
-                <p className="truncate text-sm font-semibold text-zinc-500">
-                  {prompt.mode === "message" ? prompt.text : `${prompt.mode === "video" ? "Video" : "Audio"} call`}
-                </p>
+          <div className="fixed inset-x-0 bottom-[calc(82px+env(safe-area-inset-bottom))] z-50 flex justify-center px-3 pointer-events-none">
+            <motion.div
+              key={prompt.id}
+              initial={{ opacity: 0, y: 36, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 22, scale: 0.98 }}
+              className="pointer-events-auto relative w-full max-w-[400px] rounded-[24px] bg-white p-3 shadow-[0_22px_60px_rgba(0,0,0,.22)] ring-1 ring-black/5"
+            >
+              <button onClick={openPromptTarget} className="flex w-full items-center gap-3 rounded-[18px] p-1 text-left active:bg-zinc-50">
+                <img src={prompt.target.photos?.[0] || sampleProfiles[0].photos[0]} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-black">{prompt.target.name}</p>
+                  <p className="line-clamp-2 text-sm font-semibold leading-5 text-zinc-500">
+                    {prompt.mode === "message" ? prompt.text : `${prompt.mode === "video" ? "Video" : "Audio"} call`}
+                  </p>
+                </div>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#fff0f5] text-[#f72565]">
+                  {prompt.mode === "video" ? <Video size={17} /> : prompt.mode === "audio" ? <Phone size={17} /> : <MessageCircle size={17} />}
+                </span>
+              </button>
+              <div className="mt-3 grid grid-cols-[1fr_1.1fr] gap-2">
+                <button onClick={dismissPrompt} className="min-h-11 rounded-full bg-zinc-100 px-3 py-3 text-sm font-black text-zinc-700">Later</button>
+                <button onClick={acceptPrompt} className="pink-gradient flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-3 text-sm font-black text-white">
+                  {prompt.mode === "message" ? "Open" : "Answer"}
+                </button>
               </div>
-              <button onClick={dismissPrompt} className="grid h-11 w-11 place-items-center rounded-full bg-zinc-100 text-zinc-500">
-                <X size={18} />
+              <button onClick={dismissPrompt} className="absolute -right-1 -top-1 grid h-8 w-8 place-items-center rounded-full bg-white text-zinc-500 shadow-md">
+                <X size={16} />
               </button>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <button onClick={dismissPrompt} className="min-h-11 rounded-full bg-zinc-100 py-3 text-sm font-black text-zinc-700">Later</button>
-              <button onClick={acceptPrompt} className="pink-gradient flex min-h-11 items-center justify-center gap-2 rounded-full py-3 text-sm font-black text-white">
-                {prompt.mode === "video" ? <Video size={18} /> : prompt.mode === "audio" ? <Phone size={18} /> : <MessageCircle size={18} />}
-                {prompt.mode === "message" ? "Reply" : "Answer"}
-              </button>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
       <CallOverlay

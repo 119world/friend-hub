@@ -25,7 +25,6 @@ export default function AppLayout({ children }) {
           </footer>
           <AutoEngagement />
           <BottomNav />
-          <span className="ios-home-bar" />
         </>
       )}
     </main>

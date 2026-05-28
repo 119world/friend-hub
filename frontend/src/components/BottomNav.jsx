@@ -11,7 +11,7 @@ const items = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-5 border-t border-zinc-100 bg-white px-1 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-10px_30px_rgba(15,23,42,.05)]">
+    <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-5 border-t border-zinc-100 bg-white px-1 pb-[calc(.5rem+env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-10px_30px_rgba(15,23,42,.05)]">
       {items.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}

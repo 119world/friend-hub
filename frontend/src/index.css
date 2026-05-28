@@ -36,7 +36,12 @@ select {
 
 .phone-page {
   min-height: 100dvh;
-  padding: 0 clamp(14px, 5.2vw, 24px) 118px;
+  padding: 0 clamp(14px, 5.2vw, 24px) calc(118px + env(safe-area-inset-bottom));
+}
+
+.discover-page {
+  min-height: auto;
+  padding-bottom: calc(136px + env(safe-area-inset-bottom));
 }
 
 .glass-gradient {
@@ -49,18 +54,6 @@ select {
 
 .mock-card-shadow {
   box-shadow: 0 18px 42px rgba(0,0,0,.12);
-}
-
-.ios-home-bar {
-  position: fixed;
-  bottom: 8px;
-  left: 50%;
-  z-index: 40;
-  height: 5px;
-  width: 138px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: #050505;
 }
 
 @media (min-width: 768px) {
