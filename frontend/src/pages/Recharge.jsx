@@ -90,6 +90,11 @@ export default function Recharge() {
   const discountValue = Math.max(0, selectedOriginal - selectedPrice);
   const discountPercent = selectedPlan?.savePercent ?? (selectedOriginal > 0 ? Math.round((discountValue / selectedOriginal) * 100) : 0);
   const selectedMethod = PAYMENT_METHODS.find((item) => item.key === payMethod) || PAYMENT_METHODS[0];
+  const stepMeta = {
+    plan: { number: 1, label: "Choose Plan" },
+    payment: { number: 2, label: "Select Payment Method" },
+    status: { number: 4, label: paymentStatus?.type === "success" ? "Success" : paymentStatus?.type === "error" ? "Failed" : "Status" }
+  }[step] || { number: 1, label: "Choose Plan" };
 
   async function pay(plan) {
     setError("");
@@ -210,7 +215,7 @@ export default function Recharge() {
     <section className="phone-page px-2 pb-20 pt-2 md:pb-28">
       <div className="rounded-[24px] border border-zinc-200 bg-[#faf9fc] p-2.5">
         <header className="mb-2 flex items-center justify-between gap-2 rounded-2xl bg-white px-2.5 py-2 shadow-sm">
-          <button onClick={() => (step === "plan" ? navigate(-1) : setStep("plan"))} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-zinc-100" aria-label="Back">
+          <button onClick={() => (step === "plan" ? navigate(-1) : setStep("plan"))} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-zinc-100" aria-label="Back">
             <ArrowLeft size={21} />
           </button>
           <div className="min-w-0 text-center">
@@ -221,11 +226,24 @@ export default function Recharge() {
           </div>
           <button
             onClick={() => setNotice("Support: mdibrahim786d@gmail.com. Share your order ID or transaction ID for payment help.")}
-            className="grid h-10 shrink-0 place-items-center rounded-xl bg-[#fff1f7] px-2 text-xs font-black text-[#f72565]"
+            className="grid h-11 shrink-0 place-items-center rounded-xl bg-[#fff1f7] px-2 text-xs font-black text-[#f72565]"
           >
             <span className="inline-flex items-center gap-1"><Headset size={14} /> Help</span>
           </button>
         </header>
+
+        <div className="mb-2 grid grid-cols-4 gap-1.5 rounded-2xl bg-white p-1.5 text-center text-[9px] font-black text-zinc-500">
+          {[
+            [1, "Choose Plan"],
+            [2, "Payment Method"],
+            [3, "Pay Now"],
+            [4, "Success/Failed"]
+          ].map(([number, label]) => (
+            <span key={number} className={`rounded-xl px-1 py-2 ${stepMeta.number >= number ? "bg-[#fff1f7] text-[#f72565]" : "bg-zinc-50"}`}>
+              Step {number}<span className="block truncate">{label}</span>
+            </span>
+          ))}
+        </div>
 
         {location.state?.reason && (
             <p className="mb-2 rounded-xl bg-[#fff4f8] p-2 text-xs font-semibold text-[#e93078] md:text-sm">
@@ -250,7 +268,7 @@ export default function Recharge() {
         {step === "plan" && (
           <article className="rounded-[20px] border border-zinc-200 bg-white p-2 md:p-3">
             <div className="mb-2 rounded-xl bg-[#fff7fb] px-2.5 py-2">
-              <h2 className="text-xl font-black leading-tight text-[#111626]">Choose Your Plan</h2>
+              <h2 className="text-xl font-black leading-tight text-[#111626]">Step 1: Choose Plan</h2>
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
                 <span className="rounded-full bg-rose-100 px-2 py-1 font-black text-[#f72565]">Limited Time Offer</span>
                 <span className="rounded-full bg-emerald-50 px-2 py-1 font-black text-emerald-600">Save up to 75%</span>
@@ -291,7 +309,7 @@ export default function Recharge() {
                     </ul>
                     <button
                       onClick={() => openPaymentStep(plan.id)}
-                      className="pink-gradient mt-2 h-9 w-full rounded-full text-xs font-black text-white"
+                      className="pink-gradient mt-2 h-11 w-full rounded-full text-xs font-black text-white"
                     >
                       Choose Plan
                     </button>
@@ -315,7 +333,7 @@ export default function Recharge() {
               </p>
             </div>
 
-            <h4 className="mt-3 text-base font-black text-[#111626]">Select Payment Method</h4>
+            <h4 className="mt-3 text-base font-black text-[#111626]">Step 2: Select Payment Method</h4>
             <div className="mt-2 grid gap-2">
               {PAYMENT_METHODS.map((method) => {
                 const Icon = method.icon;
@@ -355,7 +373,7 @@ export default function Recharge() {
                 onClick={() => pay(selectedPlan)}
                 className="pink-gradient h-11 rounded-full text-sm font-black text-white disabled:opacity-60"
               >
-                {busy === selectedPlan.id ? "Creating..." : `Pay Now ₹${selectedPrice}`}
+                {busy === selectedPlan.id ? "Creating..." : `Step 3: Pay Now ₹${selectedPrice}`}
               </button>
             </div>
           </article>
@@ -363,6 +381,7 @@ export default function Recharge() {
 
         {step === "status" && (
           <article className="rounded-[22px] border border-zinc-200 bg-white p-3">
+            <p className="mb-2 text-sm font-black text-[#111626]">Step 4: Success/Failed</p>
             <div className={`rounded-xl p-3 ${
               paymentStatus?.type === "success"
                 ? "bg-emerald-50"

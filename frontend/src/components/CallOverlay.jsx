@@ -22,7 +22,7 @@ export default function CallOverlay({ open, mode = "audio", contact, onClose }) 
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
-      <section className="relative min-h-[620px] w-full max-w-[430px] overflow-hidden rounded-[28px] bg-zinc-950 text-white shadow-2xl">
+      <section className="relative min-h-[min(620px,calc(100dvh-24px))] w-full max-w-[430px] overflow-hidden rounded-[28px] bg-zinc-950 text-white shadow-2xl">
         {photo && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover opacity-95" />}
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/10 to-black/75" />
 

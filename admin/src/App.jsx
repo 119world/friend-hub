@@ -5,9 +5,10 @@ import Dashboard from "./pages/Dashboard";
 import MediaManager from "./pages/MediaManager";
 import Moderation from "./pages/Moderation";
 import ResourcePage from "./pages/ResourcePage";
+import { hasAdminSession } from "./services/adminApi";
 
 function Guard({ children }) {
-  return localStorage.getItem("friendHubAdminSession") || localStorage.getItem("friendHubAdminToken") || import.meta.env.VITE_ADMIN_TOKEN ? children : <Navigate to="/login" replace />;
+  return hasAdminSession() ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {

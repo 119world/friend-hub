@@ -89,9 +89,9 @@ export default function Matches({ mode = "matches" }) {
 
       <section className="mt-8">
         <h2 className="text-[23px] font-black">New Connections</h2>
-        <div className="mt-5 flex gap-7 overflow-x-auto pb-2">
+        <div className="mt-5 grid grid-cols-4 gap-4 pb-2">
           <Link to="/likes" className="shrink-0 text-center">
-            <div className="relative h-[82px] w-[82px] rounded-full bg-gradient-to-br from-amber-400 to-[#f72565] p-[3px]">
+            <div className="relative mx-auto h-[68px] w-[68px] rounded-full bg-gradient-to-br from-amber-400 to-[#f72565] p-[3px] min-[390px]:h-[76px] min-[390px]:w-[76px]">
               <img src={sampleProfiles[0].photos[0]} className="h-full w-full rounded-full border-2 border-white object-cover" />
               <span className="absolute -right-2 top-0 rounded-full bg-[#f72565] px-2 py-1 text-xs font-black text-white">99+</span>
               <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-[#f72565]" />
@@ -100,11 +100,11 @@ export default function Matches({ mode = "matches" }) {
           </Link>
           {newMatches.map((item) => (
             <button key={item.id} onClick={() => openTarget(item)} className="shrink-0 text-center">
-              <div className="relative h-[82px] w-[82px] rounded-full bg-[#f72565] p-[3px]">
+              <div className="relative mx-auto h-[68px] w-[68px] rounded-full bg-[#f72565] p-[3px] min-[390px]:h-[76px] min-[390px]:w-[76px]">
                 <AvatarMedia item={item} className="h-full w-full rounded-full border-2 border-white" />
                 <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-[#f72565]" />
               </div>
-              <span className="mt-3 block text-base font-bold">{item.name}</span>
+              <span className="mt-2 block truncate text-sm font-bold">{item.name}</span>
             </button>
           ))}
         </div>

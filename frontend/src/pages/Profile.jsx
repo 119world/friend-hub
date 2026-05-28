@@ -80,12 +80,12 @@ export default function Profile() {
   }
 
   return (
-    <section className="phone-page px-6">
+    <section className="phone-page">
       <PhoneStatusBar />
-      <header className="grid grid-cols-3 items-center pb-6 pt-7">
-        <button onClick={() => navigate(-1)} className="justify-self-start"><ArrowLeft size={31} /></button>
+      <header className="grid grid-cols-[44px_1fr_44px] items-center pb-5 pt-6">
+        <button onClick={() => navigate(-1)} className="grid h-11 w-11 place-items-center justify-self-start rounded-full active:bg-zinc-100"><ArrowLeft size={29} /></button>
         <h1 className="justify-self-center text-[23px] font-black">Profile</h1>
-        <button onClick={() => setEditing((value) => !value)} className="justify-self-end"><Edit3 size={28} /></button>
+        <button onClick={() => setEditing((value) => !value)} className="grid h-11 w-11 place-items-center justify-self-end rounded-full active:bg-zinc-100"><Edit3 size={26} /></button>
       </header>
 
       {editing ? (

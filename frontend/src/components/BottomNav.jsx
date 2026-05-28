@@ -11,7 +11,7 @@ const items = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-5 border-t border-zinc-100 bg-white px-2 pb-9 pt-4">
+    <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-5 border-t border-zinc-100 bg-white px-1 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-10px_30px_rgba(15,23,42,.05)]">
       {items.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
@@ -19,9 +19,9 @@ export default function BottomNav() {
           className="rounded-lg"
         >
           {({ isActive }) => (
-            <span className={`flex flex-col items-center gap-1.5 px-1 py-1 text-[13px] font-medium ${isActive ? "text-[#f72565]" : "text-zinc-500"}`}>
-              <Icon size={28} strokeWidth={2.2} fill={isActive ? "currentColor" : "none"} />
-              <span className={isActive ? "font-bold" : ""}>{label}</span>
+            <span className={`flex min-h-14 flex-col items-center justify-center gap-1 px-0.5 py-1 text-[11px] font-medium leading-none min-[390px]:text-[12px] ${isActive ? "text-[#f72565]" : "text-zinc-500"}`}>
+              <Icon size={24} strokeWidth={2.2} fill={isActive ? "currentColor" : "none"} />
+              <span className={`max-w-full truncate ${isActive ? "font-bold" : ""}`}>{label}</span>
             </span>
           )}
         </NavLink>

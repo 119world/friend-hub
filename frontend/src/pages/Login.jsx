@@ -175,14 +175,14 @@ export default function Login() {
       <Heart className="absolute right-20 top-[335px] z-10 rotate-12 text-white drop-shadow-xl" size={40} fill="currentColor" strokeWidth={0} />
       <Heart className="absolute right-11 top-[386px] z-10 rotate-12 text-white/65 drop-shadow-xl" size={25} fill="currentColor" strokeWidth={0} />
 
-      <section className="relative z-10 flex min-h-screen flex-col px-8 pb-9 pt-12">
-        <div className="mb-16">
-          <div className="relative mb-12 h-12 w-12">
+      <section className="relative z-10 flex min-h-screen flex-col px-5 pb-7 pt-10 min-[390px]:px-8 min-[390px]:pb-9 min-[390px]:pt-12">
+        <div className="mb-10 min-[390px]:mb-16">
+          <div className="relative mb-8 h-12 w-12 min-[390px]:mb-12">
             <Heart className="absolute left-0 top-0 text-white" size={46} fill="currentColor" strokeWidth={0} />
             <Flame className="absolute bottom-0 left-3 text-[#ff3f8d]" size={24} fill="currentColor" strokeWidth={0} />
           </div>
-          <h1 className="max-w-[335px] text-[42px] font-black leading-[1.12] tracking-normal">{welcome.title}</h1>
-          <p className="mt-6 max-w-[285px] text-[22px] font-medium leading-[1.35] text-white/92">{welcome.subtitle}</p>
+          <h1 className="max-w-[335px] text-[34px] font-black leading-[1.12] tracking-normal min-[390px]:text-[42px]">{welcome.title}</h1>
+          <p className="mt-4 max-w-[285px] text-[18px] font-medium leading-[1.35] text-white/92 min-[390px]:mt-6 min-[390px]:text-[22px]">{welcome.subtitle}</p>
         </div>
 
         <div className="mt-auto space-y-4">

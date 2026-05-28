@@ -99,7 +99,7 @@ export default function AutoEngagement() {
             initial={{ opacity: 0, y: 40, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.98 }}
-            className="fixed bottom-[96px] left-1/2 z-40 w-[min(calc(100%-16px),420px)] -translate-x-1/2 rounded-[24px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
+            className="fixed bottom-[88px] left-1/2 z-40 w-[calc(100%-16px)] max-w-[420px] -translate-x-1/2 rounded-[24px] bg-white p-4 shadow-[0_22px_60px_rgba(0,0,0,.22)]"
           >
             <div className="flex items-center gap-3">
               <img src={prompt.target.photos?.[0] || sampleProfiles[0].photos[0]} alt="" className="h-14 w-14 rounded-full object-cover" />
@@ -109,13 +109,13 @@ export default function AutoEngagement() {
                   {prompt.mode === "message" ? prompt.text : `${prompt.mode === "video" ? "Video" : "Audio"} call`}
                 </p>
               </div>
-              <button onClick={dismissPrompt} className="grid h-9 w-9 place-items-center rounded-full bg-zinc-100 text-zinc-500">
+              <button onClick={dismissPrompt} className="grid h-11 w-11 place-items-center rounded-full bg-zinc-100 text-zinc-500">
                 <X size={18} />
               </button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <button onClick={dismissPrompt} className="rounded-full bg-zinc-100 py-3 text-sm font-black text-zinc-700">Later</button>
-              <button onClick={acceptPrompt} className="pink-gradient flex items-center justify-center gap-2 rounded-full py-3 text-sm font-black text-white">
+              <button onClick={dismissPrompt} className="min-h-11 rounded-full bg-zinc-100 py-3 text-sm font-black text-zinc-700">Later</button>
+              <button onClick={acceptPrompt} className="pink-gradient flex min-h-11 items-center justify-center gap-2 rounded-full py-3 text-sm font-black text-white">
                 {prompt.mode === "video" ? <Video size={18} /> : prompt.mode === "audio" ? <Phone size={18} /> : <MessageCircle size={18} />}
                 {prompt.mode === "message" ? "Reply" : "Answer"}
               </button>

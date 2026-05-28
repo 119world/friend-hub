@@ -1,5 +1,6 @@
-import { Bell, Bot, ChevronDown, CreditCard, Database, Heart, Home, Image, KeyRound, MessageCircle, Phone, Repeat, Search, Settings, ShieldAlert, ShieldCheck, Tags, UserRound, Wallet } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Bell, Bot, CreditCard, Database, Heart, Home, Image, KeyRound, LogOut, MessageCircle, Phone, Repeat, Search, Settings, ShieldAlert, ShieldCheck, Tags, UserRound, Wallet } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { clearAdminSession } from "../services/adminApi";
 
 const links = [
   { to: "/", label: "Dashboard", icon: Home },
@@ -27,6 +28,13 @@ const links = [
 ];
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  const session = JSON.parse(localStorage.getItem("friendHubAdminSession") || "null");
+  function logout() {
+    clearAdminSession();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f9ff] lg:flex">
       <aside className="bg-[#090f3f] p-5 text-white lg:fixed lg:bottom-0 lg:left-0 lg:top-0 lg:w-72">
@@ -46,10 +54,12 @@ export default function AdminLayout() {
         <div className="mt-8 hidden rounded-2xl bg-white/10 p-4 lg:flex lg:items-center lg:gap-3">
           <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" className="h-11 w-11 rounded-full object-cover" />
           <div className="min-w-0 flex-1">
-            <p className="font-bold">Admin User</p>
-            <p className="text-xs text-white/60">Super Admin</p>
+            <p className="truncate font-bold">{session?.displayName || "Admin User"}</p>
+            <p className="truncate text-xs text-white/60">{session?.role || "Admin"}</p>
           </div>
-          <ChevronDown size={18} />
+          <button onClick={logout} className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-white hover:bg-white/20" title="Logout">
+            <LogOut size={18} />
+          </button>
         </div>
       </aside>
       <section className="flex-1 p-4 lg:ml-72 lg:p-8">

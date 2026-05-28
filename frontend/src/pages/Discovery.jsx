@@ -104,12 +104,12 @@ export default function Discovery() {
   ];
 
   return (
-    <section className="phone-page px-6">
+    <section className="phone-page">
       <PhoneStatusBar />
-      <header className="grid grid-cols-3 items-center pb-8 pt-7">
-        <button onClick={() => setMenuOpen(true)} className="justify-self-start rounded-full p-2 text-black active:bg-zinc-100"><Menu size={30} /></button>
-        <h1 className="justify-self-center text-[22px] font-black">Discover New Friends</h1>
-        <button onClick={() => setFilterOpen(true)} className="justify-self-end rounded-full p-2 text-black active:bg-zinc-100"><SlidersHorizontal size={30} /></button>
+      <header className="grid grid-cols-[44px_1fr_44px] items-center pb-4 pt-5">
+        <button onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center justify-self-start rounded-full text-black active:bg-zinc-100"><Menu size={28} /></button>
+        <h1 className="justify-self-center text-center text-[18px] font-black min-[390px]:text-[20px]">Discover New Friends</h1>
+        <button onClick={() => setFilterOpen(true)} className="grid h-11 w-11 place-items-center justify-self-end rounded-full text-black active:bg-zinc-100"><SlidersHorizontal size={28} /></button>
       </header>
 
       <motion.article
@@ -119,7 +119,7 @@ export default function Discovery() {
         transition={{ duration: 0.25 }}
         onTouchStart={(event) => setTouchStart(event.touches[0].clientX)}
         onTouchEnd={handleTouchEnd}
-        className="mock-card-shadow relative h-[550px] overflow-hidden rounded-[28px] bg-zinc-100"
+        className="mock-card-shadow relative h-[min(62dvh,500px)] min-h-[390px] overflow-hidden rounded-[26px] bg-zinc-100"
       >
         <AnimatePresence mode="wait">
           {visibleMedia.type === "video" ? (
@@ -150,28 +150,30 @@ export default function Discovery() {
           )}
         </AnimatePresence>
         <div className="absolute inset-0 glass-gradient" />
-        <div className="absolute left-5 top-5 rounded-full bg-[#ff2f7e] px-5 py-3 text-base font-black text-white">{profile.type === "bot" ? "Friend Hub" : "New here"}</div>
-        <div className="absolute right-5 top-5 rounded-full border border-white/45 bg-black/25 px-4 py-2 text-base font-black text-white">{photoIndex + 1}/{media.length || 1}</div>
+        <div className="absolute left-4 top-4 rounded-full bg-[#ff2f7e] px-4 py-2 text-sm font-black text-white">{profile.type === "bot" ? "Friend Hub" : "New here"}</div>
+        <div className="absolute right-4 top-4 rounded-full border border-white/45 bg-black/25 px-3 py-1.5 text-sm font-black text-white">{photoIndex + 1}/{media.length || 1}</div>
         {media.length > 1 && (
           <>
-            <button onClick={prevPhoto} className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronLeft size={25} /></button>
-            <button onClick={nextPhoto} className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronRight size={25} /></button>
-            <div className="absolute left-5 right-5 top-[78px] flex gap-1.5">
+            <button onClick={prevPhoto} className="absolute left-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronLeft size={25} /></button>
+            <button onClick={nextPhoto} className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/20 text-white backdrop-blur"><ChevronRight size={25} /></button>
+            <div className="absolute left-5 right-5 top-[72px] flex gap-1.5">
               {media.map((item, idx) => (
-                <button key={item.url} onClick={() => setPhotoIndex(idx)} className={`h-1.5 flex-1 rounded-full ${idx === photoIndex ? "bg-white" : "bg-white/35"}`} />
+                <button key={item.url} onClick={() => setPhotoIndex(idx)} className="flex h-11 flex-1 items-start pt-3" aria-label={`Show media ${idx + 1}`}>
+                  <span className={`h-1.5 w-full rounded-full ${idx === photoIndex ? "bg-white" : "bg-white/35"}`} />
+                </button>
               ))}
             </div>
           </>
         )}
-        <div className="absolute bottom-7 left-5 right-5 text-white">
+        <div className="absolute bottom-5 left-4 right-4 text-white">
           <div className="flex items-center gap-2">
-            <h2 className="text-[34px] font-black leading-none">{profile.name}, {profile.age}</h2>
-            {profile.verified !== false && <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-500 text-white"><Check size={22} strokeWidth={4} /></span>}
+            <h2 className="min-w-0 truncate text-[28px] font-black leading-none min-[390px]:text-[32px]">{profile.name}, {profile.age}</h2>
+            {profile.verified !== false && <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-500 text-white"><Check size={19} strokeWidth={4} /></span>}
           </div>
-          <p className="mt-5 flex items-center gap-3 text-lg font-semibold"><Briefcase size={22} /> {profile.profession || "Product Designer"}</p>
-          <div className="mt-4 flex items-center justify-between">
-            <p className="flex items-center gap-3 text-lg font-semibold"><MapPin size={23} /> {profile.city || "Mumbai, India"}</p>
-            <button onClick={() => navigate(`/people/${profile.id}`, { state: { profile } })} className="grid h-12 w-12 place-items-center rounded-full border-2 border-white text-white"><Info size={30} /></button>
+          <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold min-[390px]:text-base"><Briefcase size={19} className="shrink-0" /> <span className="truncate">{profile.profession || "Product Designer"}</span></p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="flex min-w-0 items-center gap-2 text-sm font-semibold min-[390px]:text-base"><MapPin size={20} className="shrink-0" /> <span className="truncate">{profile.city || "Mumbai, India"}</span></p>
+            <button onClick={() => navigate(`/people/${profile.id}`, { state: { profile } })} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-white text-white"><Info size={26} /></button>
           </div>
           <p className="mt-3 flex items-center gap-2 text-sm font-black text-white/90"><Navigation size={16} /> {Number(profile.distanceKm || 2)} km nearby</p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -182,11 +184,11 @@ export default function Discovery() {
         </div>
       </motion.article>
 
-      <div className="mt-8 grid grid-cols-4 gap-6 px-4">
-        <button onClick={nextCard} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-amber-400 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><RotateCcw size={33} strokeWidth={3} /></button>
-        <button onClick={nextCard} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-red-400 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><X size={36} strokeWidth={3} /></button>
-        <button onClick={() => handleChat(profile)} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-[#f72565] shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Heart size={36} fill="currentColor" strokeWidth={0} /></button>
-        <button onClick={() => navigate("/recharge", { state: { reason: "Recharge credits for premium social features." } })} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-purple-500 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Star size={36} fill="currentColor" strokeWidth={0} /></button>
+      <div className="mt-5 grid grid-cols-4 gap-3 px-2 min-[390px]:gap-5 min-[390px]:px-4">
+        <button onClick={nextCard} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-amber-400 shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><RotateCcw size={29} strokeWidth={3} /></button>
+        <button onClick={nextCard} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-red-400 shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><X size={31} strokeWidth={3} /></button>
+        <button onClick={() => handleChat(profile)} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-[#f72565] shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><Heart size={31} fill="currentColor" strokeWidth={0} /></button>
+        <button onClick={() => navigate("/recharge", { state: { reason: "Recharge credits for premium social features." } })} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-purple-500 shadow-[0_14px_26px_rgba(0,0,0,.10)] min-[390px]:h-16 min-[390px]:w-16"><Star size={31} fill="currentColor" strokeWidth={0} /></button>
       </div>
       <p className="mt-3 text-center text-sm font-black text-[#f72565]">Connect with People</p>
 

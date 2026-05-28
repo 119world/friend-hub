@@ -41,11 +41,15 @@ export function upsertCredentialResource(name, item) {
 }
 
 export function isValidAdminCredential(loginId, password) {
-  return memory.adminAccounts.some((account) =>
+  return Boolean(findAdminAccountFromMemory(loginId, password));
+}
+
+export function findAdminAccountFromMemory(loginId, password) {
+  return memory.adminAccounts.find((account) =>
     account.active !== false &&
     clean(account.loginId) === clean(loginId) &&
     String(account.password || account.temporaryAccessCode || "") === String(password || "")
-  );
+  ) || null;
 }
 
 export function findPartnerAccountFromMemory(loginId, password) {
