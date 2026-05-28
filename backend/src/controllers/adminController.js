@@ -1,6 +1,7 @@
 import { db, firebaseAdmin, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
 import { listCredentialResource, upsertCredentialResource } from "../services/credentialStore.js";
 import { listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
+import { creditWallet } from "../services/paymentService.js";
 import { startOfDay, startOfMonth, startOfWeek, startOfYear } from "../utils/timeWindow.js";
 
 const collectionMap = {
@@ -23,6 +24,7 @@ const collectionMap = {
   adminAccounts: "adminAccounts",
   partnerAccounts: "partnerAccounts",
   referralRules: "referralRules",
+  refundRequests: "refundRequests",
   reports: "reports",
   notifications: "notifications"
 };
@@ -300,4 +302,36 @@ export async function updateResource(req, res) {
     return res.json({ ok: true, demo: true });
   }
   res.json({ ok: true });
+}
+
+export async function verifyManualPayment(req, res) {
+  const paymentId = req.params.id;
+  const now = hasFirestoreCredentials ? firebaseAdmin.firestore.FieldValue.serverTimestamp() : new Date().toISOString();
+  const current = hasFirestoreCredentials
+    ? await db.collection("payments").doc(paymentId).get().then((snap) => (snap.exists ? { id: snap.id, ...snap.data() } : null)).catch(() => null)
+    : await listLocalResource("payments").then((items) => items.find((item) => item.id === paymentId || item.orderId === paymentId) || null);
+
+  if (!current) return res.status(404).json({ message: "Payment not found." });
+  if (!["manual_pending", "manual_submitted", "demo_created", "created"].includes(current.status)) {
+    return res.status(400).json({ message: "Payment is not pending manual verification." });
+  }
+
+  const patch = {
+    ...current,
+    id: current.id || paymentId,
+    orderId: current.orderId || paymentId,
+    status: "paid",
+    paymentId: current.manualTransactionId || req.body?.paymentId || `manual_verified_${Date.now()}`,
+    verifiedByAdmin: true,
+    verifiedAt: now,
+    updatedAt: now
+  };
+
+  if (hasFirestoreCredentials) {
+    await db.collection("payments").doc(paymentId).set(patch, { merge: true });
+  } else {
+    await upsertLocalResource("payments", patch);
+  }
+  await creditWallet(current.userId, current.planId);
+  res.json({ ok: true, item: patch });
 }

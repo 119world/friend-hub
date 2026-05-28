@@ -214,6 +214,32 @@ export async function verifyPayment(req, res) {
   res.json({ ok: true, plan, orderId, paymentId });
 }
 
+export async function submitManualPayment(req, res) {
+  const { orderId, transactionId, note } = req.body || {};
+  if (!orderId || !transactionId) {
+    return res.status(400).json({ message: "Order ID and transaction ID are required." });
+  }
+  const item = await findPayment(orderId);
+  if (!item || item.userId !== req.user.uid) {
+    return res.status(404).json({ message: "Manual payment order not found." });
+  }
+  if (item.status === "paid") {
+    const plan = await getPlan(item.planId);
+    return res.json({ ok: true, status: "paid", plan, orderId });
+  }
+  await savePayment(orderId, {
+    manualTransactionId: String(transactionId).trim(),
+    userNote: String(note || "").trim(),
+    status: "manual_submitted",
+    submittedAt: nowValue()
+  });
+  res.json({
+    ok: true,
+    status: "manual_submitted",
+    message: "Transaction ID submitted. Admin will verify and activate credits."
+  });
+}
+
 export async function createSubscription(req, res) {
   const planId = req.body.planId || "premium_99";
   const plan = await getPlan(planId);

@@ -3,6 +3,7 @@ import AdminLayout from "./components/AdminLayout";
 import AdminLogin from "./pages/AdminLogin";
 import Dashboard from "./pages/Dashboard";
 import MediaManager from "./pages/MediaManager";
+import Moderation from "./pages/Moderation";
 import ResourcePage from "./pages/ResourcePage";
 
 function Guard({ children }) {
@@ -15,11 +16,12 @@ export default function App() {
       <Route path="/login" element={<AdminLogin />} />
       <Route path="/" element={<Guard><AdminLayout /></Guard>}>
         <Route index element={<Dashboard />} />
+        <Route path="moderation" element={<Moderation />} />
         <Route path="users" element={<ResourcePage title="Users" endpoint="/admin/users" fields={["name", "age", "gender", "city", "diamonds", "referralCode", "referralCount", "active"]} />} />
         <Route path="partners" element={<ResourcePage title="Partners" endpoint="/admin/partners" fields={["id", "name", "age", "gender", "city", "location", "distanceKm", "lat", "lng", "profession", "bio", "interests", "photos", "videos", "welcomeMessage", "firstReply", "secondReply", "freeReplyLimit", "delayMs", "online", "verified", "showInDiscovery", "showInMatches", "allowAutoContact", "chatPrice", "voiceCallPrice", "active"]} />} />
         <Route path="bots" element={<ResourcePage title="AI Bots" endpoint="/admin/aiBots" fields={["id", "name", "age", "gender", "city", "location", "distanceKm", "lat", "lng", "bio", "personality", "personalityConfig", "welcomeMessage", "firstReply", "secondReply", "freeReplyLimit", "delayMs", "photos", "galleryPhotos", "videos", "online", "verified", "showInDiscovery", "showInMatches", "allowAutoContact", "active"]} />} />
         <Route path="chats" element={<ResourcePage title="Chats" endpoint="/admin/chats" fields={["userId", "targetId", "targetType", "reported", "blocked"]} />} />
-        <Route path="payments" element={<ResourcePage title="Payments" endpoint="/admin/payments" fields={["userId", "amount", "status", "orderId", "paymentId"]} />} />
+        <Route path="payments" element={<ResourcePage title="Payments" endpoint="/admin/payments" fields={["userId", "amount", "status", "orderId", "paymentId", "manualTransactionId", "userNote", "verifiedByAdmin"]} />} />
         <Route path="plans" element={<ResourcePage title="Recharge Plans" endpoint="/admin/plans" fields={["id", "title", "originalPrice", "price", "diamonds", "minutes", "subscription", "autoPay", "autoPayAmount", "renewEveryDays", "gatewayPreference", "razorpayPlanId", "gatewayPlanId", "totalCycles", "active"]} />} />
         <Route path="offers" element={<ResourcePage title="Offers" endpoint="/admin/offers" fields={["title", "bannerUrl", "price", "originalPrice", "discount", "active", "startsAt", "endsAt"]} />} />
         <Route path="media" element={<MediaManager />} />
@@ -34,6 +36,7 @@ export default function App() {
         <Route path="referrals" element={<ResourcePage title="Referral Bonuses" endpoint="/admin/referralRules" fields={["id", "requiredReferrals", "bonusDiamonds", "title", "active"]} />} />
         <Route path="subscriptions" element={<ResourcePage title="Subscriptions" endpoint="/admin/subscriptions" fields={["userId", "planId", "price", "status", "startedAt", "renewAt", "cancelledAt", "active"]} />} />
         <Route path="calls" element={<ResourcePage title="Call Sessions" endpoint="/admin/callSessions" fields={["userId", "targetId", "mode", "status", "seconds", "diamondsDeducted", "createdAt"]} />} />
+        <Route path="refunds" element={<ResourcePage title="Refund Requests" endpoint="/admin/refundRequests" fields={["id", "userId", "orderId", "paymentId", "amount", "reason", "status", "adminNote", "active"]} />} />
       </Route>
     </Routes>
   );

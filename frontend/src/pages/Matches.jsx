@@ -42,7 +42,7 @@ export default function Matches({ mode = "matches" }) {
           name: item.name,
           photo: item.photos?.[0] || "",
           videos: item.videos || [],
-          preview: item.type === "bot" ? (item.welcomeMessage || "Friend Hub is online") : (item.bio || "Verified partner is online"),
+          preview: item.type === "bot" ? (item.welcomeMessage || "Friend Hub is online") : (item.bio || "Verified community profile is online"),
           time: item.online === false ? "Offline" : "Online",
           unread: item.allowAutoContact === false ? 0 : 1,
           target: item
@@ -54,7 +54,7 @@ export default function Matches({ mode = "matches" }) {
       id: chat.id,
       name: chat.targetName || "Friend",
       photo: chat.targetPhoto || sampleProfiles[0].photos[0],
-      preview: chat.targetType === "bot" ? "Friend Hub chat" : "Verified partner chat",
+      preview: chat.targetType === "bot" ? "Friend Hub chat" : "Verified community chat",
       time: "Now",
       unread: chat.unreadByUser || 0
     }));

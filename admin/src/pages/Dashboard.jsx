@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, CreditCard, Heart, MessageCircle, Phone, Users, UserRound, Wallet, XCircle } from "lucide-react";
+import { Activity, CreditCard, MessageCircle, Phone, Users, UserRound, Wallet, XCircle } from "lucide-react";
 import adminApi from "../services/adminApi";
 
 const spark = [18, 26, 22, 34, 27, 31, 25, 40, 36, 48];
@@ -99,7 +99,7 @@ export default function Dashboard() {
           <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
             {[
               [UserRound, "New User Registered", "Ava Martinez", "2 min ago"],
-              [Heart, "New Match Created", "Liam and Olivia", "5 min ago"],
+              [Users, "New Connection Created", "Interest-based chat", "5 min ago"],
               [CreditCard, "Recharge Completed", "Premium Plan", "15 min ago"],
               [Phone, "Video Call Started", "Ananya", "22 min ago"],
               [XCircle, "Payment Failed", "Retry needed", "35 min ago"]

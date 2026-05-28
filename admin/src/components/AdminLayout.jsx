@@ -1,13 +1,15 @@
-import { Bell, Bot, ChevronDown, CreditCard, Database, Heart, Home, Image, KeyRound, MessageCircle, Phone, Repeat, Search, Settings, ShieldCheck, Tags, UserRound, Wallet } from "lucide-react";
+import { Bell, Bot, ChevronDown, CreditCard, Database, Heart, Home, Image, KeyRound, MessageCircle, Phone, Repeat, Search, Settings, ShieldAlert, ShieldCheck, Tags, UserRound, Wallet } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 
 const links = [
   { to: "/", label: "Dashboard", icon: Home },
+  { to: "/moderation", label: "Moderation", icon: ShieldAlert },
   { to: "/users", label: "Users", icon: UserRound },
   { to: "/partners", label: "Partners", icon: ShieldCheck },
   { to: "/bots", label: "AI Bots", icon: Bot },
   { to: "/chats", label: "Chats", icon: MessageCircle },
   { to: "/payments", label: "Payments", icon: CreditCard },
+  { to: "/refunds", label: "Refunds", icon: Repeat },
   { to: "/plans", label: "Plans", icon: Wallet },
   { to: "/offers", label: "Offers", icon: Tags },
   { to: "/media", label: "Media", icon: Image },

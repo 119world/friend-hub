@@ -188,6 +188,7 @@ export default function Discovery() {
         <button onClick={() => handleChat(profile)} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-[#f72565] shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Heart size={36} fill="currentColor" strokeWidth={0} /></button>
         <button onClick={() => navigate("/recharge", { state: { reason: "Recharge credits for premium social features." } })} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-white text-purple-500 shadow-[0_18px_34px_rgba(0,0,0,.10)]"><Star size={36} fill="currentColor" strokeWidth={0} /></button>
       </div>
+      <p className="mt-3 text-center text-sm font-black text-[#f72565]">Connect with People</p>
 
       <AnimatePresence>
         {menuOpen && (

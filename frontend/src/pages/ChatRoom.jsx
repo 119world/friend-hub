@@ -24,6 +24,8 @@ export default function ChatRoom() {
   const [uploading, setUploading] = useState(0);
   const [botTyping, setBotTyping] = useState(false);
   const [callMode, setCallMode] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [replyConfig, setReplyConfig] = useState(defaultReplyConfig);
   const bottomRef = useRef(null);
   const typingTimer = useRef(null);
@@ -63,7 +65,9 @@ export default function ChatRoom() {
   useEffect(() => listenReplyConfig(setReplyConfig), []);
 
   useEffect(() => {
-    if (location.state?.callMode && hasDiamonds) setCallMode(location.state.callMode);
+    if (location.state?.callMode && hasDiamonds) {
+      setNotice({ title: "Coming soon", body: "Audio and video calls are UI-ready. Live calling will be enabled soon." });
+    }
   }, [hasDiamonds, location.state]);
 
   useEffect(() => {
@@ -83,6 +87,21 @@ export default function ChatRoom() {
     setLocked(true);
     navigate("/recharge", { state: { reason } });
     return true;
+  }
+
+  function startCall(mode) {
+    if (requireDiamonds(`Recharge diamonds to start a ${mode} call.`)) return;
+    setNotice({ title: "Coming soon", body: `${mode === "video" ? "Video" : "Audio"} calls are coming soon. Chat is available now.` });
+  }
+
+  function flagConversation(kind) {
+    setActionsOpen(false);
+    setNotice({
+      title: kind === "block" ? "User blocked" : "Report submitted",
+      body: kind === "block"
+        ? "This connection has been marked as blocked for moderation review."
+        : "Thanks. Friend Hub moderation will review this conversation."
+    });
   }
 
   async function botReply(nextUsed) {
@@ -213,10 +232,16 @@ export default function ChatRoom() {
           <h1 className="truncate text-xl font-black">{title}</h1>
           <p className="text-sm text-zinc-500">{peerTyping || botTyping ? "typing..." : chat?.targetOnline === false ? "Offline" : "Online"}</p>
         </div>
-        <button onClick={() => requireDiamonds("Recharge diamonds to start an audio call.") || setCallMode("audio")} className="grid h-10 w-10 place-items-center rounded-full text-[#f72565] active:bg-zinc-100"><Phone size={23} /></button>
-        <button onClick={() => requireDiamonds("Recharge diamonds to start a video call.") || setCallMode("video")} className="grid h-10 w-10 place-items-center rounded-full text-[#f72565] active:bg-zinc-100"><Video size={24} /></button>
-        <button className="text-black"><MoreVertical size={31} /></button>
+        <button onClick={() => startCall("audio")} className="grid h-10 w-10 place-items-center rounded-full text-[#f72565] active:bg-zinc-100"><Phone size={23} /></button>
+        <button onClick={() => startCall("video")} className="grid h-10 w-10 place-items-center rounded-full text-[#f72565] active:bg-zinc-100"><Video size={24} /></button>
+        <button onClick={() => setActionsOpen((value) => !value)} className="text-black"><MoreVertical size={31} /></button>
       </header>
+      {actionsOpen && (
+        <div className="absolute right-4 top-28 z-30 w-44 rounded-2xl border border-zinc-100 bg-white p-2 text-sm font-bold shadow-xl">
+          <button onClick={() => flagConversation("report")} className="w-full rounded-xl px-3 py-3 text-left text-zinc-700 active:bg-zinc-100">Report user</button>
+          <button onClick={() => flagConversation("block")} className="w-full rounded-xl px-3 py-3 text-left text-red-600 active:bg-red-50">Block user</button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-5 py-7">
         <p className="mb-7 text-center text-base font-medium text-zinc-500">Today</p>
@@ -275,6 +300,15 @@ export default function ChatRoom() {
         </button>
       </footer>
       <CallOverlay open={Boolean(callMode)} mode={callMode || "audio"} contact={{ name: title, photo }} onClose={() => setCallMode(null)} />
+      {notice && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/35 px-5">
+          <section className="w-full max-w-[360px] rounded-[24px] bg-white p-5 text-center shadow-2xl">
+            <h2 className="text-xl font-black text-[#111626]">{notice.title}</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-zinc-600">{notice.body}</p>
+            <button onClick={() => setNotice(null)} className="pink-gradient mt-4 h-11 w-full rounded-full font-black text-white">OK</button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

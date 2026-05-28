@@ -1,11 +1,11 @@
-import { Flame, Heart, MessageCircle, User, UsersRound } from "lucide-react";
+import { Flame, Home, MessageCircle, User, UsersRound } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const items = [
+  { to: "/home", label: "Home", icon: Home },
   { to: "/discovery", label: "Discover", icon: Flame },
-  { to: "/likes", label: "Likes", icon: Heart },
   { to: "/matches", label: "Connections", icon: UsersRound },
-  { to: "/messages", label: "Messages", icon: MessageCircle },
+  { to: "/messages", label: "Chat", icon: MessageCircle },
   { to: "/profile", label: "Profile", icon: User }
 ];
 

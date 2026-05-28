@@ -1,6 +1,6 @@
 # Friend Hub
 
-Low-budget Firebase + React MVP for login, profiles, discovery, matches, realtime chat, voice-call billing button, Razorpay recharge, and admin controls.
+Low-budget Firebase + React MVP for login, profiles, friend discovery, connections, realtime chat, voice-call billing button, Razorpay recharge, moderation, and admin controls.
 
 ## Apps
 

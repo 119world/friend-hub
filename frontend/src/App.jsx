@@ -6,6 +6,7 @@ import { useAuth } from "./hooks/useAuth";
 
 const ChatRoom = lazy(() => import("./pages/ChatRoom"));
 const Discovery = lazy(() => import("./pages/Discovery"));
+const Home = lazy(() => import("./pages/Home"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const Likes = lazy(() => import("./pages/Likes"));
 const Login = lazy(() => import("./pages/Login"));
@@ -47,6 +48,7 @@ export default function App() {
                 <AppLayout>
                   <Routes>
                     <Route path="/" element={<Discovery />} />
+                    <Route path="/home" element={<Home />} />
                     <Route path="/discovery" element={<Discovery />} />
                     <Route path="/likes" element={<Likes />} />
                     <Route path="/matches" element={<Matches />} />
