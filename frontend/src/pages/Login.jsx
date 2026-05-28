@@ -111,11 +111,9 @@ export default function Login() {
     setPortalBusy(true);
     if (portal === "admin") {
       try {
-        await api.get("/admin/dashboard", {
-          headers: {
-            "x-admin-id": portalForm.id.trim(),
-            "x-admin-password": portalForm.password
-          }
+        await api.post("/admin/login", {
+          loginId: portalForm.id.trim(),
+          password: portalForm.password
         });
         if (adminAppUrl) {
           window.location.href = adminAppUrl;

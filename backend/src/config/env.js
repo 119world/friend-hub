@@ -4,6 +4,14 @@ dotenv.config();
 
 const isProduction = process.env.NODE_ENV === "production";
 
+function firstEnv(...keys) {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value != null && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+
 export const env = {
   port: process.env.PORT || 8080,
   nodeEnv: process.env.NODE_ENV || "development",
@@ -14,10 +22,10 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   adminToken: process.env.ADMIN_TOKEN || (isProduction ? "" : "change-this-admin-token"),
-  adminUsername: process.env.ADMIN_USERNAME || (isProduction ? "" : "mdibrahim"),
-  adminPassword: process.env.ADMIN_PASSWORD || (isProduction ? "" : "Mdid@123"),
-  defaultPartnerLoginId: process.env.DEFAULT_PARTNER_LOGIN_ID || (isProduction ? "" : "sonu119"),
-  defaultPartnerPassword: process.env.DEFAULT_PARTNER_PASSWORD || (isProduction ? "" : "Mdid@119"),
+  adminUsername: firstEnv("ADMIN_USERNAME", "ADMIN_LOGIN_ID", "ADMIN_ID") || (isProduction ? "" : "mdibrahim"),
+  adminPassword: firstEnv("ADMIN_PASSWORD", "ADMIN_LOGIN_PASSWORD") || (isProduction ? "" : "Mdid@123"),
+  defaultPartnerLoginId: firstEnv("DEFAULT_PARTNER_LOGIN_ID", "PARTNER_LOGIN_ID", "PARTNER_USERNAME", "PARTNER_ID") || (isProduction ? "" : "sonu119"),
+  defaultPartnerPassword: firstEnv("DEFAULT_PARTNER_PASSWORD", "PARTNER_PASSWORD", "PARTNER_LOGIN_PASSWORD") || (isProduction ? "" : "Mdid@119"),
   jwtSecret: process.env.JWT_SECRET || (isProduction ? "" : "change-this-jwt-secret"),
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID,
