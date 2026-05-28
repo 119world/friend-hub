@@ -24,8 +24,10 @@ export default function Login() {
     const envUrl = String(import.meta.env.VITE_ADMIN_APP_URL || "").trim();
     const isLocalHostEnv = /localhost|127\.0\.0\.1/i.test(envUrl);
     const isLocalHostPage = /localhost|127\.0\.0\.1/i.test(window.location.hostname);
+    const isKnownBrokenAdminUrl = /^https:\/\/friend-hub-admin\.vercel\.app\/login\/?$/i.test(envUrl);
+    if (isKnownBrokenAdminUrl) return "";
     if (envUrl && !(isLocalHostEnv && !isLocalHostPage)) return envUrl;
-    return "https://friend-hub-admin.vercel.app/login";
+    return "";
   }, []);
 
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function Login() {
           window.location.href = adminAppUrl;
           return;
         }
-        setError("Admin app URL set nahi hai. Frontend env me VITE_ADMIN_APP_URL add karo.");
+        setError("Admin dashboard deploy URL set nahi hai. Vercel me real VITE_ADMIN_APP_URL add karo.");
       } catch (err) {
         setError(err.response?.data?.message || "Admin ID/password galat hai.");
       } finally {
