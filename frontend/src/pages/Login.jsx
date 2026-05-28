@@ -8,7 +8,7 @@ import { defaultWelcome, listenWelcomeConfig } from "../services/appConfig";
 import api from "../services/api";
 
 export default function Login() {
-  const { user, loginGoogle, enterWithoutLogin, startPhoneLogin } = useAuth();
+  const { user, loginGoogle, loginGuest, enterWithoutLogin, startPhoneLogin } = useAuth();
   const navigate = useNavigate();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -42,6 +42,29 @@ export default function Login() {
   }, [portal]);
 
   if (user) return <Navigate to="/" replace />;
+
+  function hasRealFirebaseConfig() {
+    return Boolean(
+      import.meta.env.VITE_FIREBASE_API_KEY &&
+      import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
+      import.meta.env.VITE_FIREBASE_PROJECT_ID &&
+      import.meta.env.VITE_FIREBASE_PROJECT_ID !== "demo" &&
+      !String(import.meta.env.VITE_FIREBASE_API_KEY || "").includes("demo")
+    );
+  }
+
+  async function handleGetStarted() {
+    setError("");
+    if (!hasRealFirebaseConfig()) {
+      enterWithoutLogin();
+      return;
+    }
+    try {
+      await loginGuest();
+    } catch {
+      enterWithoutLogin();
+    }
+  }
 
   async function handleOtp() {
     setError("");
@@ -163,7 +186,7 @@ export default function Login() {
         </div>
 
         <div className="mt-auto space-y-4">
-          <button onClick={() => enterWithoutLogin()} className="pink-gradient h-16 w-full rounded-full text-lg font-black text-white shadow-2xl shadow-pink-700/25">
+          <button onClick={handleGetStarted} className="pink-gradient h-16 w-full rounded-full text-lg font-black text-white shadow-2xl shadow-pink-700/25">
             Get Started
           </button>
           <button onClick={handleGoogle} className="flex h-16 w-full items-center justify-center gap-5 rounded-full bg-white text-lg font-bold text-zinc-900 shadow-xl">

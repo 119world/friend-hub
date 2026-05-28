@@ -13,6 +13,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import partnerRoutes from "./routes/partnerRoutes.js";
 import publicRoutes from "./routes/publicRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import voiceRoutes from "./routes/voiceRoutes.js";
 
 export const app = express();
@@ -57,6 +58,7 @@ app.get("/", (req, res) => res.json({
   app: "Friend Hub API",
   health: "/health",
   publicProfiles: "/api/public/profiles",
+  myProfile: "/api/users/me",
   publicPlans: "/api/public/plans"
 }));
 app.use("/api/admin", adminRoutes);
@@ -64,6 +66,7 @@ app.use("/api/media", mediaRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/partner", partnerRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use(errorHandler);

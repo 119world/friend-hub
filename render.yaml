@@ -12,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: FIRESTORE_ENABLED
-        value: "false"
+        value: "true"
       - key: CLIENT_URL
         sync: false
       - key: ADMIN_URL

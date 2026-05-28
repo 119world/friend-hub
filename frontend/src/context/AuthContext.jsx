@@ -1,4 +1,5 @@
 import { createContext, useEffect, useMemo, useState } from "react";
+import api from "../services/api";
 
 export const AuthContext = createContext(null);
 
@@ -23,6 +24,16 @@ async function loadFirestoreTools() {
   const firebase = await import("../firebase/firebase");
   const firestore = await import("firebase/firestore");
   return { db: firebase.db, ...firestore };
+}
+
+async function loadBackendProfile() {
+  const { data } = await api.get("/users/me");
+  return data?.profile || null;
+}
+
+async function saveBackendProfile(payload) {
+  const { data } = await api.patch("/users/me", payload);
+  return data?.profile || null;
 }
 
 const defaultProfile = (user, timestamp = new Date().toISOString()) => ({
@@ -95,10 +106,13 @@ export function AuthProvider({ children }) {
     if (localProfile) {
       try {
         const parsed = JSON.parse(localProfile);
-        setUser({ uid: parsed.uid, isLocal: true });
-        setProfile(parsed);
-        setLoading(false);
-        return undefined;
+        if (parsed?.isLocal && String(parsed.uid || "").startsWith("local_")) {
+          setUser({ uid: parsed.uid, isLocal: true });
+          setProfile(parsed);
+          setLoading(false);
+          return undefined;
+        }
+        localStorage.removeItem("friendHubLocalProfile");
       } catch {
         localStorage.removeItem("friendHubLocalProfile");
       }
@@ -121,7 +135,12 @@ export function AuthProvider({ children }) {
         }
 
         if (!useFirestore) {
-          setProfile(defaultProfile(current));
+          try {
+            const saved = await loadBackendProfile();
+            setProfile(saved || defaultProfile(current));
+          } catch {
+            setProfile(defaultProfile(current));
+          }
           setLoading(false);
           return;
         }
@@ -158,9 +177,16 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       refreshProfile: async () => {
-        if (user?.isLocal || !useFirestore) {
+        if (user?.isLocal) {
           const parsed = JSON.parse(localStorage.getItem("friendHubLocalProfile") || "{}");
           setProfile(Object.keys(parsed).length ? parsed : profile);
+          return;
+        }
+        if (!useFirestore) {
+          try {
+            const saved = await loadBackendProfile();
+            if (saved) setProfile(saved);
+          } catch {}
           return;
         }
         try {
@@ -170,7 +196,29 @@ export function AuthProvider({ children }) {
           setProfile({ id: snap.id, ...snap.data() });
         } catch {}
       },
-      applyWalletCredit: (plan = {}) => {
+      updateProfile: async (payload = {}) => {
+        if (!user) return null;
+        if (user.isLocal) {
+          const next = { ...(profile || {}), ...payload, uid: user.uid, isLocal: true, updatedAt: new Date().toISOString() };
+          localStorage.setItem("friendHubLocalProfile", JSON.stringify(next));
+          setProfile(next);
+          return next;
+        }
+        if (!useFirestore) {
+          const saved = await saveBackendProfile(payload);
+          if (saved) setProfile(saved);
+          return saved;
+        }
+        const { auth } = await loadFirebaseAuth();
+        const { db, doc, serverTimestamp, setDoc, getDoc } = await loadFirestoreTools();
+        const uid = auth.currentUser?.uid || user.uid;
+        await setDoc(doc(db, "users", uid), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+        const fresh = await getDoc(doc(db, "users", uid));
+        const next = { id: fresh.id, ...fresh.data() };
+        setProfile(next);
+        return next;
+      },
+      applyWalletCredit: async (plan = {}) => {
         if (!user) return;
         const next = {
           ...(profile || {}),
@@ -178,10 +226,16 @@ export function AuthProvider({ children }) {
           diamonds: Number(profile?.diamonds || 0) + Number(plan.diamonds || 0),
           minutes: Number(profile?.minutes || 0) + Number(plan.minutes || 0)
         };
-        if (user.isLocal || !useFirestore) {
+        if (user.isLocal) {
           localStorage.setItem("friendHubLocalProfile", JSON.stringify({ ...next, isLocal: true }));
         }
         setProfile(next);
+        if (!user.isLocal && !useFirestore) {
+          try {
+            const saved = await loadBackendProfile();
+            if (saved) setProfile(saved);
+          } catch {}
+        }
       },
       loginGoogle: async () => {
         const { auth, googleProvider, signInWithPopup } = await loadFirebaseAuth();
@@ -236,6 +290,8 @@ export function AuthProvider({ children }) {
           if (useFirestore && auth.currentUser) {
             const { db, doc, setDoc } = await loadFirestoreTools();
             await setDoc(doc(db, "users", auth.currentUser.uid), { online: false }, { merge: true }).catch(() => {});
+          } else if (auth.currentUser) {
+            await api.patch("/users/me", { online: false }).catch(() => {});
           }
           return signOut(auth);
         } catch {

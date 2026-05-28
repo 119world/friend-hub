@@ -57,7 +57,7 @@ Backend environment variables:
 
 ```env
 NODE_ENV=production
-FIRESTORE_ENABLED=false
+FIRESTORE_ENABLED=true
 CLIENT_URL=https://your-user-app.vercel.app
 ADMIN_URL=https://your-admin-app.vercel.app
 ADMIN_TOKEN=make-a-long-random-token
@@ -189,14 +189,14 @@ Admin media upload flow:
 
 Render free service can sleep after inactivity.
 
-Also, when `FIRESTORE_ENABLED=false`, backend local JSON data is not a durable production database on Render. It is fine for demo/testing, but production should use a durable free-tier database:
+Also, do not run production with `FIRESTORE_ENABLED=false`. Backend local JSON data is not a durable production database on Render. It is fine for demo/testing only; production should use a durable free-tier database:
 
 - Firebase Firestore free quota
 - Supabase free tier
 - Neon Postgres free tier
 - MongoDB Atlas free tier
 
-Use durable DB before real public launch if admin data, partner media, payment accounts, and API keys must survive redeploys.
+Use Firestore or another durable DB before real public launch if profile data, admin data, partner media, payment accounts, and API keys must survive redeploys.
 
 ## 10. Final Live QA
 
