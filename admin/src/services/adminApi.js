@@ -39,6 +39,12 @@ export function hasAdminSession() {
   return Boolean(localStorage.getItem("friendHubAdminToken"));
 }
 
+export async function verifyAdminSession() {
+  if (!hasAdminSession()) return null;
+  const { data } = await adminApi.get("/admin/session");
+  return data?.admin || null;
+}
+
 export function saveAdminSession({ token, admin }) {
   localStorage.setItem("friendHubAdminToken", token);
   localStorage.setItem("friendHubAdminSession", JSON.stringify({

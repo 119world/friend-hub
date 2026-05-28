@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./components/AdminLayout";
 import AdminLogin from "./pages/AdminLogin";
@@ -5,10 +6,42 @@ import Dashboard from "./pages/Dashboard";
 import MediaManager from "./pages/MediaManager";
 import Moderation from "./pages/Moderation";
 import ResourcePage from "./pages/ResourcePage";
-import { hasAdminSession } from "./services/adminApi";
+import { clearAdminSession, hasAdminSession, saveAdminSession, verifyAdminSession } from "./services/adminApi";
 
 function Guard({ children }) {
-  return hasAdminSession() ? children : <Navigate to="/login" replace />;
+  const [status, setStatus] = useState(() => hasAdminSession() ? "checking" : "signed_out");
+
+  useEffect(() => {
+    let active = true;
+    if (!hasAdminSession()) {
+      setStatus("signed_out");
+      return undefined;
+    }
+    verifyAdminSession()
+      .then((admin) => {
+        if (!active) return;
+        if (admin) {
+          saveAdminSession({ token: localStorage.getItem("friendHubAdminToken"), admin });
+          setStatus("signed_in");
+        } else {
+          clearAdminSession();
+          setStatus("signed_out");
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        clearAdminSession();
+        setStatus("signed_out");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (status === "checking") {
+    return <main className="grid min-h-screen place-items-center bg-[#f7f9ff] text-sm font-bold text-slate-500">Checking admin session...</main>;
+  }
+  return status === "signed_in" ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
