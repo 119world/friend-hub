@@ -253,6 +253,26 @@ async function findPartnerAccountByLogin(loginId, password) {
     upsertCredentialResource("partnerAccounts", next);
     return { source: "local", account: next };
   }
+  if (
+    env.defaultPartnerLoginId &&
+    env.defaultPartnerPassword &&
+    clean(loginId) === clean(env.defaultPartnerLoginId) &&
+    String(password || "") === String(env.defaultPartnerPassword)
+  ) {
+    const fallback = ensureMainFlags({
+      id: `partner_${slugify(env.defaultPartnerLoginId)}`,
+      partnerId: `partner_${slugify(env.defaultPartnerLoginId)}`,
+      loginId: env.defaultPartnerLoginId,
+      displayName: "Main Partner",
+      role: "main_partner",
+      isMain: true,
+      active: true,
+      password: env.defaultPartnerPassword,
+      temporaryAccessCode: env.defaultPartnerPassword
+    });
+    upsertCredentialResource("partnerAccounts", fallback);
+    return { source: "env", account: fallback };
+  }
   return { source: "none", account: null };
 }
 
