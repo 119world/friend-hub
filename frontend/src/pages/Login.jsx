@@ -24,8 +24,6 @@ export default function Login() {
     const envUrl = String(import.meta.env.VITE_ADMIN_APP_URL || "").trim();
     const isLocalHostEnv = /localhost|127\.0\.0\.1/i.test(envUrl);
     const isLocalHostPage = /localhost|127\.0\.0\.1/i.test(window.location.hostname);
-    const isKnownBrokenAdminUrl = /^https:\/\/friend-hub-admin\.vercel\.app\/login\/?$/i.test(envUrl);
-    if (isKnownBrokenAdminUrl) return "";
     if (envUrl && !(isLocalHostEnv && !isLocalHostPage)) return envUrl;
     return "";
   }, []);
