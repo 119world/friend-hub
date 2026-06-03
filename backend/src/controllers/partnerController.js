@@ -237,13 +237,15 @@ async function findPartnerAccountByLogin(loginId, password) {
   if (hasFirestoreCredentials) {
     try {
       const snap = await db.collection("partnerAccounts")
-        .where("loginId", "==", clean(loginId))
         .where("active", "==", true)
-        .limit(20)
+        .limit(1000)
         .get();
       const account = snap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .find((item) => clean(item.password || item.temporaryAccessCode || "") === clean(password));
+        .find((item) =>
+          toKey(item.loginId) === toKey(loginId) &&
+          clean(item.password || item.temporaryAccessCode || "") === clean(password)
+        );
       if (account) {
         const next = ensureMainFlags(account);
         upsertCredentialResource("partnerAccounts", next);
@@ -255,7 +257,7 @@ async function findPartnerAccountByLogin(loginId, password) {
   const localList = await listLocalResource("partnerAccounts");
   const local = localList.find((item) =>
     item.active !== false &&
-    clean(item.loginId) === clean(loginId) &&
+    toKey(item.loginId) === toKey(loginId) &&
     clean(item.password || item.temporaryAccessCode || "") === clean(password)
   );
   if (local) {
@@ -266,7 +268,7 @@ async function findPartnerAccountByLogin(loginId, password) {
   if (
     env.defaultPartnerLoginId &&
     env.defaultPartnerPassword &&
-    clean(loginId) === clean(env.defaultPartnerLoginId) &&
+    toKey(loginId) === toKey(env.defaultPartnerLoginId) &&
     clean(password) === clean(env.defaultPartnerPassword)
   ) {
     const fallback = ensureMainFlags({
