@@ -202,7 +202,10 @@ function maskSensitive(name, data) {
     if (copy.keySecret) copy.keySecret = "stored in backend";
     if (copy.webhookSecret) copy.webhookSecret = "stored in backend";
   }
-  if (name === "partnerAccounts" && copy.temporaryAccessCode) copy.temporaryAccessCode = "stored in backend";
+  if (name === "partnerAccounts") {
+    if (copy.password) copy.password = "stored in backend";
+    if (copy.temporaryAccessCode) copy.temporaryAccessCode = "stored in backend";
+  }
   if (name === "adminAccounts" && copy.password) copy.password = "stored in backend";
   return copy;
 }
@@ -396,6 +399,9 @@ export async function deleteResource(req, res) {
   }
   await deleteLocalResource(name, id);
   if (name === "partnerAccounts") {
+    try {
+      await db.collection("partners").doc(existing?.partnerId || id).delete();
+    } catch {}
     await deleteLocalResource("partners", id);
     if (existing?.partnerId && existing.partnerId !== id) {
       try {
@@ -448,6 +454,7 @@ export async function clearResource(req, res) {
   }
   await clearLocalResource(name);
   if (name === "partnerAccounts") {
+    await deleteFirestoreDocs("partners", existing.map((item) => ({ id: item.partnerId || item.id })));
     await clearLocalResource("partners");
   }
   return res.json({ ok: true, deleted: existing.length });
