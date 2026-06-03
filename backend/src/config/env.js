@@ -12,6 +12,13 @@ function firstEnv(...keys) {
   return "";
 }
 
+function normalizePrivateKey(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\n/g, "\n");
+}
+
 export const env = {
   port: process.env.PORT || 8080,
   nodeEnv: process.env.NODE_ENV || "development",
@@ -30,7 +37,7 @@ export const env = {
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    privateKey: normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY),
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET
   },
   cloudinary: {
