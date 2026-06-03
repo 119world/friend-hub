@@ -7,7 +7,10 @@ function normalizeApiUrl(value) {
 }
 
 function apiBaseUrl() {
-  return normalizeApiUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL) || "http://localhost:8080/api";
+  const configured = normalizeApiUrl(import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL);
+  if (configured) return configured;
+  if (import.meta.env.PROD) return "https://friend-hub-backend.onrender.com/api";
+  return "http://localhost:8080/api";
 }
 
 const api = axios.create({
