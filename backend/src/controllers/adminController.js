@@ -1,4 +1,5 @@
 import { db, firebaseAdmin, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
+import { env } from "../config/env.js";
 import { listCredentialResource, upsertCredentialResource } from "../services/credentialStore.js";
 import { clearLocalResource, deleteLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
 import { creditWallet } from "../services/paymentService.js";
@@ -62,6 +63,14 @@ const numberFields = new Set([
   "requiredReferrals",
   "bonusDiamonds"
 ]);
+
+function shouldUseLocalFallback() {
+  return env.nodeEnv !== "production";
+}
+
+function sendDatabaseError(res, message = "Database connection failed. Please check Firestore environment variables.") {
+  return res.status(503).json({ message });
+}
 const booleanFields = new Set(["active", "verified", "online", "autoPay", "subscription", "subscriptionEnabled", "manualFailover", "rechargeTrigger", "offerTrigger", "showInDiscovery", "showInMatches", "allowAutoContact", "autoRecycleOnExhaustion", "maintenanceMode"]);
 const defaultPartnerPhoto = "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85";
 
@@ -186,7 +195,11 @@ async function upsertPublicPartnerFromAccount(account) {
         ...profile,
         updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
-    } catch {}
+    } catch (error) {
+      if (!shouldUseLocalFallback()) throw error;
+    }
+  } else if (!shouldUseLocalFallback()) {
+    throw new Error("Firestore is required to save partner profiles in production.");
   }
   await upsertLocalResource("partners", profile);
   return profile;
@@ -327,6 +340,7 @@ export async function createResource(req, res) {
       await upsertPublicPartnerFromAccount({ id: ref.id, ...payload });
     }
   } catch {
+    if (!shouldUseLocalFallback()) return sendDatabaseError(res);
     const item = { id: ref.id, ...payload, demoOnly: true };
     if (name === "adminAccounts" || name === "partnerAccounts") {
       upsertCredentialResource(name, item);
@@ -354,6 +368,7 @@ export async function updateResource(req, res) {
       await upsertPublicPartnerFromAccount({ id: req.params.id, ...clean });
     }
   } catch {
+    if (!shouldUseLocalFallback()) return sendDatabaseError(res);
     const items = await listLocalResource(name);
     const index = items.findIndex((item) => item.id === req.params.id);
     if (index >= 0) items[index] = { ...items[index], ...clean, demoOnly: true };
@@ -385,6 +400,7 @@ export async function deleteResource(req, res) {
     }
     await db.collection(name).doc(id).delete();
   } catch {
+    if (!shouldUseLocalFallback()) return sendDatabaseError(res);
     if (name === "partnerAccounts") {
       existing ||= (await listLocalResource(name)).find((item) => item.id === id) || null;
     }
@@ -446,6 +462,7 @@ export async function clearResource(req, res) {
     if (!hasFirestoreCredentials) throw new Error("Local demo store");
     await deleteFirestoreDocs(name, existing);
   } catch {
+    if (!shouldUseLocalFallback()) return sendDatabaseError(res);
     await clearLocalResource(name);
     if (name === "partnerAccounts") {
       await clearLocalResource("partners");

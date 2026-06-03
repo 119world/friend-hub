@@ -12,6 +12,16 @@ const MAX_PHOTOS = 7;
 const MAX_VIDEOS = 2;
 const MAX_INTERESTS = 30;
 
+function shouldUseLocalFallback() {
+  return env.nodeEnv !== "production";
+}
+
+function databaseError() {
+  const error = new Error("Database connection failed. Please check Firestore environment variables.");
+  error.status = 503;
+  return error;
+}
+
 const PARTNER_DEFAULTS = {
   type: "partner",
   name: "New Partner",
@@ -325,13 +335,18 @@ async function loadOrCreatePartnerProfile(partnerId, account = null) {
 async function savePartnerProfile(partnerId, profile) {
   const now = new Date().toISOString();
   const next = { ...profile, id: partnerId, partnerId, updatedAt: now };
+  if (!hasFirestoreCredentials && !shouldUseLocalFallback()) {
+    throw databaseError();
+  }
   if (hasFirestoreCredentials) {
     try {
       await db.collection("partners").doc(partnerId).set({
         ...next,
         updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
-    } catch {}
+    } catch (error) {
+      if (!shouldUseLocalFallback()) throw databaseError();
+    }
   }
   await upsertLocalResource("partners", next);
   return next;
@@ -340,13 +355,18 @@ async function savePartnerProfile(partnerId, profile) {
 async function savePartnerAccount(account) {
   const now = new Date().toISOString();
   const next = ensureMainFlags({ ...account, updatedAt: now });
+  if (!hasFirestoreCredentials && !shouldUseLocalFallback()) {
+    throw databaseError();
+  }
   if (hasFirestoreCredentials) {
     try {
       await db.collection("partnerAccounts").doc(next.id).set({
         ...next,
         updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
-    } catch {}
+    } catch (error) {
+      if (!shouldUseLocalFallback()) throw databaseError();
+    }
   }
   await upsertLocalResource("partnerAccounts", next);
   upsertCredentialResource("partnerAccounts", next);
