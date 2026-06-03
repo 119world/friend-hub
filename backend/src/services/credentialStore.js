@@ -1,5 +1,15 @@
 import { env } from "../config/env.js";
 
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "main";
+}
+
+const defaultPartnerId = `partner_${slugify(env.defaultPartnerLoginId)}`;
+
 const memory = {
   adminAccounts: [
     {
@@ -13,11 +23,14 @@ const memory = {
   ],
   partnerAccounts: [
     {
-      id: "partner_sonu119",
-      partnerId: "partner_sonu119",
+      id: defaultPartnerId,
+      partnerId: defaultPartnerId,
       loginId: env.defaultPartnerLoginId,
-      displayName: "Sonu Partner",
+      displayName: "Main Partner",
+      password: env.defaultPartnerPassword,
       temporaryAccessCode: env.defaultPartnerPassword,
+      role: "main_partner",
+      isMain: true,
       active: true
     }
   ]
@@ -56,7 +69,7 @@ export function findPartnerAccountFromMemory(loginId, password) {
   return memory.partnerAccounts.find((account) =>
     account.active !== false &&
     clean(account.loginId) === clean(loginId) &&
-    String(account.password || account.temporaryAccessCode || "") === String(password || "")
+    clean(account.password || account.temporaryAccessCode || "") === clean(password)
   ) || null;
 }
 

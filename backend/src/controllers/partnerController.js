@@ -202,7 +202,7 @@ async function listPartnerAccounts() {
   }
   if (!items.length) items = await listLocalResource("partnerAccounts");
   if (!items.length) {
-    const fallback = findPartnerAccountByIdFromMemory("partner_sonu119");
+    const fallback = findPartnerAccountByIdFromMemory(`partner_${slugify(env.defaultPartnerLoginId)}`);
     if (fallback) items = [fallback];
   }
   return items.map((item) => ensureMainFlags(item));
@@ -233,7 +233,7 @@ async function findPartnerAccountByLogin(loginId, password) {
         .get();
       const account = snap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .find((item) => String(item.password || item.temporaryAccessCode || "") === String(password || ""));
+        .find((item) => clean(item.password || item.temporaryAccessCode || "") === clean(password));
       if (account) {
         const next = ensureMainFlags(account);
         upsertCredentialResource("partnerAccounts", next);
@@ -246,7 +246,7 @@ async function findPartnerAccountByLogin(loginId, password) {
   const local = localList.find((item) =>
     item.active !== false &&
     clean(item.loginId) === clean(loginId) &&
-    String(item.password || item.temporaryAccessCode || "") === String(password || "")
+    clean(item.password || item.temporaryAccessCode || "") === clean(password)
   );
   if (local) {
     const next = ensureMainFlags(local);
@@ -257,7 +257,7 @@ async function findPartnerAccountByLogin(loginId, password) {
     env.defaultPartnerLoginId &&
     env.defaultPartnerPassword &&
     clean(loginId) === clean(env.defaultPartnerLoginId) &&
-    String(password || "") === String(env.defaultPartnerPassword)
+    clean(password) === clean(env.defaultPartnerPassword)
   ) {
     const fallback = ensureMainFlags({
       id: `partner_${slugify(env.defaultPartnerLoginId)}`,
@@ -392,7 +392,7 @@ function buildPartnerToken(account, loginIdOverride = "") {
 
 export async function partnerLogin(req, res) {
   const loginId = clean(req.body?.id || req.body?.loginId);
-  const password = String(req.body?.password || "");
+  const password = clean(req.body?.password);
   if (!loginId || !password) {
     return res.status(400).json({ message: "ID and password required." });
   }

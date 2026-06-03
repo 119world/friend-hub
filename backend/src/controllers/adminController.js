@@ -63,6 +63,11 @@ const numberFields = new Set([
   "bonusDiamonds"
 ]);
 const booleanFields = new Set(["active", "verified", "online", "autoPay", "subscription", "subscriptionEnabled", "manualFailover", "rechargeTrigger", "offerTrigger", "showInDiscovery", "showInMatches", "allowAutoContact", "autoRecycleOnExhaustion", "maintenanceMode"]);
+const defaultPartnerPhoto = "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85";
+
+function cleanText(value) {
+  return String(value || "").trim();
+}
 
 function normalizeValue(key, value) {
   if (value === "") return null;
@@ -139,6 +144,52 @@ function normalizePayload(resource, body) {
     payload.autoRecycleOnExhaustion = payload.autoRecycleOnExhaustion !== false;
   }
   return payload;
+}
+
+async function upsertPublicPartnerFromAccount(account) {
+  if (!account) return null;
+  const partnerId = cleanText(account.partnerId || account.id || `partner_${account.loginId}`);
+  if (!partnerId) return null;
+  const now = new Date().toISOString();
+  const existingLocal = (await listLocalResource("partners")).find((item) => item.id === partnerId) || {};
+  const displayName = cleanText(account.displayName || account.name || existingLocal.name || account.loginId || "Partner");
+  const profile = {
+    ...existingLocal,
+    id: partnerId,
+    partnerId,
+    type: "partner",
+    name: displayName,
+    username: cleanText(account.loginId || existingLocal.username),
+    age: Number(account.age || existingLocal.age || 24),
+    gender: account.gender || existingLocal.gender || "Woman",
+    city: cleanText(account.city || existingLocal.city || "India"),
+    location: cleanText(account.location || existingLocal.location || account.city || existingLocal.city || "India"),
+    profession: cleanText(account.profession || existingLocal.profession || "Friend Hub Partner"),
+    phone: cleanText(account.phone || existingLocal.phone),
+    bio: cleanText(account.bio || existingLocal.bio || "Friendly profile on Friend Hub."),
+    interests: Array.isArray(account.interests) && account.interests.length ? account.interests : (Array.isArray(existingLocal.interests) && existingLocal.interests.length ? existingLocal.interests : ["Chatting"]),
+    photos: Array.isArray(account.photos) && account.photos.length ? account.photos : (Array.isArray(existingLocal.photos) && existingLocal.photos.length ? existingLocal.photos : [defaultPartnerPhoto]),
+    galleryPhotos: Array.isArray(account.galleryPhotos) && account.galleryPhotos.length ? account.galleryPhotos : (Array.isArray(existingLocal.galleryPhotos) && existingLocal.galleryPhotos.length ? existingLocal.galleryPhotos : [defaultPartnerPhoto]),
+    videos: Array.isArray(account.videos) ? account.videos : (Array.isArray(existingLocal.videos) ? existingLocal.videos : []),
+    online: account.online !== false,
+    verified: account.verified !== false,
+    showInDiscovery: account.showInDiscovery !== false,
+    showInMatches: account.showInMatches !== false,
+    allowAutoContact: account.allowAutoContact !== false,
+    active: account.active !== false,
+    createdAt: existingLocal.createdAt || now,
+    updatedAt: now
+  };
+  if (hasFirestoreCredentials) {
+    try {
+      await db.collection("partners").doc(partnerId).set({
+        ...profile,
+        updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    } catch {}
+  }
+  await upsertLocalResource("partners", profile);
+  return profile;
 }
 
 function maskSensitive(name, data) {
@@ -269,12 +320,18 @@ export async function createResource(req, res) {
     if (name === "adminAccounts" || name === "partnerAccounts") {
       upsertCredentialResource(name, { id: ref.id, ...payload });
     }
+    if (name === "partnerAccounts") {
+      await upsertPublicPartnerFromAccount({ id: ref.id, ...payload });
+    }
   } catch {
     const item = { id: ref.id, ...payload, demoOnly: true };
     if (name === "adminAccounts" || name === "partnerAccounts") {
       upsertCredentialResource(name, item);
     }
     await upsertLocalResource(name, item);
+    if (name === "partnerAccounts") {
+      await upsertPublicPartnerFromAccount(item);
+    }
     return res.status(201).json({ item: maskSensitive(name, item), demo: true });
   }
   res.status(201).json({ item: maskSensitive(name, { id: ref.id, ...payload }) });
@@ -290,6 +347,9 @@ export async function updateResource(req, res) {
       ...clean,
       updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
+    if (name === "partnerAccounts") {
+      await upsertPublicPartnerFromAccount({ id: req.params.id, ...clean });
+    }
   } catch {
     const items = await listLocalResource(name);
     const index = items.findIndex((item) => item.id === req.params.id);
@@ -299,6 +359,9 @@ export async function updateResource(req, res) {
       upsertCredentialResource(name, { id: req.params.id, ...clean, demoOnly: true });
     }
     await upsertLocalResource(name, items[index >= 0 ? index : 0]);
+    if (name === "partnerAccounts") {
+      await upsertPublicPartnerFromAccount(items[index >= 0 ? index : 0]);
+    }
     return res.json({ ok: true, demo: true });
   }
   res.json({ ok: true });

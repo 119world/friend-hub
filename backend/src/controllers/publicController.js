@@ -1,4 +1,5 @@
 import { db, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
+import { listCredentialResource } from "../services/credentialStore.js";
 import { listLocalResource, getLocalResource } from "../services/localDataStore.js";
 
 const defaultPlans = [
@@ -29,6 +30,12 @@ const defaultReplyConfig = {
   delayMs: 650
 };
 
+const defaultPartnerPhoto = "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85";
+
+function clean(value) {
+  return String(value || "").trim();
+}
+
 function normalizeProfile(id, type, data) {
   const photos = Array.isArray(data.photos) ? data.photos.filter(Boolean).slice(0, 7) : [];
   const galleryPhotos = Array.isArray(data.galleryPhotos) ? data.galleryPhotos.filter(Boolean).slice(0, 7) : [];
@@ -57,14 +64,60 @@ async function listCollection(name, options = {}) {
   return listLocalResource(name);
 }
 
+async function listPartnerAccounts() {
+  let items = [];
+  if (hasFirestoreCredentials) {
+    try {
+      const snap = await db.collection("partnerAccounts").limit(1000).get();
+      items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch {}
+  }
+  if (!items.length) items = await listLocalResource("partnerAccounts");
+  if (!items.length) items = listCredentialResource("partnerAccounts");
+  return items.filter((item) => item.active !== false);
+}
+
+function profileFromAccount(account) {
+  const id = clean(account.partnerId || account.id || `partner_${account.loginId}`);
+  const name = clean(account.displayName || account.name || account.loginId || "Partner");
+  return normalizeProfile(id, "partner", {
+    id,
+    partnerId: id,
+    type: "partner",
+    name,
+    username: clean(account.loginId),
+    age: Number(account.age || 24),
+    gender: account.gender || "Woman",
+    city: clean(account.city || account.location || "India"),
+    location: clean(account.location || account.city || "India"),
+    profession: clean(account.profession || "Friend Hub Partner"),
+    bio: clean(account.bio || "Friendly profile on Friend Hub."),
+    interests: Array.isArray(account.interests) && account.interests.length ? account.interests : ["Chatting"],
+    photos: Array.isArray(account.photos) && account.photos.length ? account.photos : [defaultPartnerPhoto],
+    galleryPhotos: Array.isArray(account.galleryPhotos) && account.galleryPhotos.length ? account.galleryPhotos : [defaultPartnerPhoto],
+    videos: Array.isArray(account.videos) ? account.videos : [],
+    welcomeMessage: clean(account.welcomeMessage || "Hey! Thanks for connecting."),
+    online: account.online !== false,
+    verified: account.verified !== false,
+    showInDiscovery: account.showInDiscovery !== false,
+    showInMatches: account.showInMatches !== false,
+    allowAutoContact: account.allowAutoContact !== false,
+    active: account.active !== false
+  });
+}
+
 export async function publicProfiles(req, res) {
   const partners = (await listCollection("partners", { activeOnly: true }))
     .filter((item) => item.active !== false)
     .map((item) => normalizeProfile(item.id, "partner", item));
+  const knownPartnerIds = new Set(partners.map((item) => clean(item.id || item.partnerId)));
+  const accountProfiles = (await listPartnerAccounts())
+    .map(profileFromAccount)
+    .filter((item) => item.active !== false && item.showInDiscovery !== false && !knownPartnerIds.has(clean(item.id)));
   const bots = (await listCollection("aiBots", { activeOnly: true }))
     .filter((item) => item.active !== false)
     .map((item) => normalizeProfile(item.id, "bot", item));
-  res.json({ items: [...partners, ...bots] });
+  res.json({ items: [...accountProfiles, ...partners, ...bots] });
 }
 
 export async function publicPlans(req, res) {
