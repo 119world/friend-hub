@@ -55,6 +55,21 @@ export async function upsertLocalResource(name, item) {
   return item;
 }
 
+export async function deleteLocalResource(name, id) {
+  const store = await readStore();
+  const items = Array.isArray(store[name]) ? store[name] : [];
+  store[name] = items.filter((item) => item.id !== id);
+  await writeStore(store);
+  return true;
+}
+
+export async function clearLocalResource(name) {
+  const store = await readStore();
+  store[name] = [];
+  await writeStore(store);
+  return true;
+}
+
 export async function getLocalResource(name, id) {
   const items = await listLocalResource(name);
   return items.find((item) => item.id === id) || null;

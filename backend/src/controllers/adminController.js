@@ -1,6 +1,6 @@
 import { db, firebaseAdmin, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
 import { listCredentialResource, upsertCredentialResource } from "../services/credentialStore.js";
-import { listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
+import { clearLocalResource, deleteLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
 import { creditWallet } from "../services/paymentService.js";
 import { startOfDay, startOfMonth, startOfWeek, startOfYear } from "../utils/timeWindow.js";
 
@@ -365,6 +365,92 @@ export async function updateResource(req, res) {
     return res.json({ ok: true, demo: true });
   }
   res.json({ ok: true });
+}
+
+export async function deleteResource(req, res) {
+  const name = collectionMap[req.params.resource];
+  if (!name) return res.status(404).json({ message: "Unknown resource" });
+  const id = cleanText(req.params.id);
+  if (!id) return res.status(400).json({ message: "Record ID required." });
+  let existing = null;
+
+  try {
+    if (!hasFirestoreCredentials) throw new Error("Local demo store");
+    if (name === "partnerAccounts") {
+      const snap = await db.collection(name).doc(id).get();
+      if (snap.exists) existing = { id: snap.id, ...snap.data() };
+    }
+    await db.collection(name).doc(id).delete();
+  } catch {
+    if (name === "partnerAccounts") {
+      existing ||= (await listLocalResource(name)).find((item) => item.id === id) || null;
+    }
+    await deleteLocalResource(name, id);
+    if (name === "partnerAccounts") {
+      await deleteLocalResource("partners", id);
+      if (existing?.partnerId && existing.partnerId !== id) {
+        await deleteLocalResource("partners", existing.partnerId);
+      }
+    }
+    return res.json({ ok: true, demo: true });
+  }
+  await deleteLocalResource(name, id);
+  if (name === "partnerAccounts") {
+    await deleteLocalResource("partners", id);
+    if (existing?.partnerId && existing.partnerId !== id) {
+      try {
+        await db.collection("partners").doc(existing.partnerId).delete();
+      } catch {}
+      await deleteLocalResource("partners", existing.partnerId);
+    }
+  }
+  return res.json({ ok: true });
+}
+
+async function listResourceItems(name) {
+  if (hasFirestoreCredentials) {
+    try {
+      const snap = await db.collection(name).limit(1000).get();
+      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    } catch {}
+  }
+  return listLocalResource(name);
+}
+
+async function deleteFirestoreDocs(name, items) {
+  for (let index = 0; index < items.length; index += 450) {
+    const batch = db.batch();
+    items.slice(index, index + 450).forEach((item) => {
+      batch.delete(db.collection(name).doc(item.id));
+    });
+    await batch.commit();
+  }
+}
+
+export async function clearResource(req, res) {
+  const name = collectionMap[req.params.resource];
+  if (!name) return res.status(404).json({ message: "Unknown resource" });
+  const allowed = new Set(["partners", "aiBots", "partnerAccounts"]);
+  if (!allowed.has(name)) {
+    return res.status(403).json({ message: "Bulk clear is only enabled for partners, bots, and partner accounts." });
+  }
+
+  const existing = await listResourceItems(name);
+  try {
+    if (!hasFirestoreCredentials) throw new Error("Local demo store");
+    await deleteFirestoreDocs(name, existing);
+  } catch {
+    await clearLocalResource(name);
+    if (name === "partnerAccounts") {
+      await clearLocalResource("partners");
+    }
+    return res.json({ ok: true, deleted: existing.length, demo: true });
+  }
+  await clearLocalResource(name);
+  if (name === "partnerAccounts") {
+    await clearLocalResource("partners");
+  }
+  return res.json({ ok: true, deleted: existing.length });
 }
 
 export async function verifyManualPayment(req, res) {

@@ -9,7 +9,7 @@ const LEGAL = {
   },
   contact: {
     title: "Contact Us",
-    body: "Business name: Friend Hub\nSupport email: mdibrahim786d@gmail.com\nWebsite: https://friend-hub-pi.vercel.app"
+    body: "Business name: Friend Hub\nSupport email: friendhub119@gmail.com\nWebsite: https://friend-hub-pi.vercel.app"
   },
   privacy: {
     title: "Privacy Policy",
@@ -29,7 +29,7 @@ const LEGAL = {
   },
   abuse: {
     title: "Report Abuse Policy",
-    body: "Use report and block features for harmful behavior, fake profiles, scams, adult content, harassment, or abusive chat. You can also contact support at mdibrahim786d@gmail.com.\n\nFriend Hub moderation reviews reports and can suspend or remove violating accounts. Emergency or illegal activity should also be reported to local authorities."
+    body: "Use report and block features for harmful behavior, fake profiles, scams, adult content, harassment, or abusive chat. You can also contact support at friendhub119@gmail.com.\n\nFriend Hub moderation reviews reports and can suspend or remove violating accounts. Emergency or illegal activity should also be reported to local authorities."
   }
 };
 
@@ -56,3 +56,4 @@ export default function LegalPage() {
     </section>
   );
 }
+

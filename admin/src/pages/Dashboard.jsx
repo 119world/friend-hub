@@ -84,7 +84,7 @@ export default function Dashboard() {
                 <img src={`https://i.pravatar.cc/80?img=${index + 20}`} className="h-11 w-11 rounded-full object-cover" />
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-[#11162e]">{name}</p>
-                  <p className="truncate text-xs text-slate-500">{name.toLowerCase().replace(" ", ".")}@gmail.com</p>
+                  <p className="truncate text-xs text-slate-500">friendhub119@gmail.com</p>
                 </div>
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </div>

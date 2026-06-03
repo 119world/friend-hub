@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { adminLogin, adminSession } from "../controllers/adminAuthController.js";
-import { createResource, dashboard, listResource, updateResource, verifyManualPayment } from "../controllers/adminController.js";
+import { clearResource, createResource, dashboard, deleteResource, listResource, updateResource, verifyManualPayment } from "../controllers/adminController.js";
 import { uploadMedia } from "../controllers/mediaController.js";
 import { requireAdmin } from "../middleware/adminAuth.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -15,5 +15,7 @@ router.post("/payments/:id/verify-manual", asyncHandler(verifyManualPayment));
 router.get("/:resource", asyncHandler(listResource));
 router.post("/:resource", asyncHandler(createResource));
 router.patch("/:resource/:id", asyncHandler(updateResource));
+router.delete("/:resource", asyncHandler(clearResource));
+router.delete("/:resource/:id", asyncHandler(deleteResource));
 
 export default router;

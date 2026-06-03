@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
 import DataTable from "../components/DataTable";
 import adminApi from "../services/adminApi";
 
@@ -16,6 +17,7 @@ export default function ResourcePage({ title, endpoint, fields }) {
   const [editingId, setEditingId] = useState("");
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState("");
+  const canClearAll = ["/admin/partners", "/admin/aiBots", "/admin/partnerAccounts"].includes(endpoint);
 
   async function load() {
     const { data } = await adminApi.get(endpoint);
@@ -52,6 +54,33 @@ export default function ResourcePage({ title, endpoint, fields }) {
     }
     setEditingId("");
     setForm(initialForm(fields));
+  }
+
+  async function remove(row) {
+    if (!row?.id) return;
+    const ok = window.confirm(`Delete ${title} record "${row.id}"? This cannot be undone.`);
+    if (!ok) return;
+    setMessage("");
+    await adminApi.delete(`${endpoint}/${row.id}`);
+    setRows((old) => old.filter((item) => item.id !== row.id));
+    setMessage("Record deleted.");
+    if (editingId === row.id) {
+      setEditingId("");
+      setForm(initialForm(fields));
+    }
+  }
+
+  async function clearAll() {
+    const ok = window.confirm(`Delete ALL ${title} records? This will make this list zero/fresh.`);
+    if (!ok) return;
+    const secondOk = window.confirm(`Final confirmation: clear every ${title} record now?`);
+    if (!secondOk) return;
+    setMessage("");
+    await adminApi.delete(endpoint);
+    setRows([]);
+    setEditingId("");
+    setForm(initialForm(fields));
+    setMessage("All records cleared.");
   }
 
   function edit(row) {
@@ -107,7 +136,10 @@ export default function ResourcePage({ title, endpoint, fields }) {
     <section className="space-y-5">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h1 className="text-3xl font-black">{title}</h1>
-        {editingId && <button onClick={() => { setEditingId(""); setForm(initialForm(fields)); }} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">Cancel edit</button>}
+        <div className="flex flex-wrap gap-2">
+          {canClearAll && <button onClick={clearAll} className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm font-black text-red-600"><Trash2 size={16} /> Clear All</button>}
+          {editingId && <button onClick={() => { setEditingId(""); setForm(initialForm(fields)); }} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">Cancel edit</button>}
+        </div>
       </div>
       <div className="rounded-2xl bg-white p-5 shadow-soft">
         <p className="mb-4 rounded-xl bg-pink-50 px-4 py-3 text-sm font-semibold text-roseDeep">
@@ -153,7 +185,16 @@ export default function ResourcePage({ title, endpoint, fields }) {
         <button onClick={save} className="mt-4 rounded-xl bg-roseSoft px-5 py-3 font-semibold text-white">{editingId ? "Update" : "Save"}</button>
         {message && <span className="ml-3 text-sm font-bold text-emerald-600">{message}</span>}
       </div>
-      <DataTable rows={rows} columns={[...columns, { key: "actions", label: "actions", render: (row) => <button onClick={() => edit(row)} className="rounded-lg bg-blush px-3 py-2 font-bold text-roseDeep">Edit</button> }]} />
+      <DataTable rows={rows} columns={[...columns, {
+        key: "actions",
+        label: "actions",
+        render: (row) => (
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => edit(row)} className="rounded-lg bg-blush px-3 py-2 font-bold text-roseDeep">Edit</button>
+            <button onClick={() => remove(row)} className="rounded-lg bg-red-50 px-3 py-2 font-bold text-red-600">Delete</button>
+          </div>
+        )
+      }]} />
     </section>
   );
 }

@@ -225,7 +225,7 @@ export default function Recharge() {
             </p>
           </div>
           <button
-            onClick={() => setNotice("Support: mdibrahim786d@gmail.com. Share your order ID or transaction ID for payment help.")}
+            onClick={() => setNotice("Support: friendhub119@gmail.com. Share your order ID or transaction ID for payment help.")}
             className="grid h-11 shrink-0 place-items-center rounded-xl bg-[#fff1f7] px-2 text-xs font-black text-[#f72565]"
           >
             <span className="inline-flex items-center gap-1"><Headset size={14} /> Help</span>
@@ -510,3 +510,4 @@ export default function Recharge() {
     </section>
   );
 }
+
