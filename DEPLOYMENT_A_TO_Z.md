@@ -59,11 +59,12 @@ Backend environment variables:
 NODE_ENV=production
 FIRESTORE_ENABLED=true
 CLIENT_URL=https://your-user-app.vercel.app
-ADMIN_URL=https://your-admin-app.vercel.app
+ADMIN_URL=https://your-user-app.vercel.app
+CORS_ORIGINS=https://your-user-app.vercel.app
 ADMIN_TOKEN=make-a-long-random-token
-ADMIN_USERNAME=mdibrahim
+ADMIN_USERNAME=your-admin-id
 ADMIN_PASSWORD=change-this-before-public-launch
-DEFAULT_PARTNER_LOGIN_ID=sonu119
+DEFAULT_PARTNER_LOGIN_ID=your-partner-id
 DEFAULT_PARTNER_PASSWORD=change-this-before-public-launch
 JWT_SECRET=make-a-long-random-secret
 
@@ -103,7 +104,8 @@ Frontend environment variables:
 
 ```env
 VITE_API_BASE_URL=https://your-render-service.onrender.com
-VITE_ADMIN_APP_URL=https://your-admin-app.vercel.app/login
+VITE_API_URL=https://your-render-service.onrender.com/api
+VITE_ADMIN_APP_URL=
 VITE_FIREBASE_API_KEY=your-web-api-key
 VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your-project-id
@@ -131,7 +133,7 @@ Admin environment variables:
 
 ```env
 VITE_API_BASE_URL=https://your-render-service.onrender.com
-VITE_ADMIN_TOKEN=same-value-as-backend-ADMIN_TOKEN
+VITE_API_URL=https://your-render-service.onrender.com/api
 ```
 
 ## 5. Connect URLs
@@ -140,10 +142,11 @@ After both Vercel apps are live, update Render environment variables:
 
 ```env
 CLIENT_URL=https://your-user-app.vercel.app
-ADMIN_URL=https://your-admin-app.vercel.app
+ADMIN_URL=https://your-user-app.vercel.app
+CORS_ORIGINS=https://your-user-app.vercel.app
 ```
 
-Then redeploy/restart the Render backend so CORS allows both apps.
+If you deploy the separate admin app later, set `ADMIN_URL` and add it to `CORS_ORIGINS`, then redeploy/restart the Render backend.
 
 ## 6. Firebase Console
 

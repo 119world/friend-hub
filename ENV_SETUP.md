@@ -19,7 +19,9 @@ I:\Friend Hub\frontend\.env.example
 Structure:
 
 ```env
-VITE_API_BASE_URL=https://friend-hub-backend.onrender.com
+VITE_API_URL=https://friend-hub-backend.onrender.com/api
+# Optional fallback if VITE_API_URL is not set:
+# VITE_API_BASE_URL=https://friend-hub-backend.onrender.com
 VITE_ADMIN_APP_URL=
 VITE_FIREBASE_API_KEY=xxxx
 VITE_FIREBASE_AUTH_DOMAIN=xxxx.firebaseapp.com
@@ -53,11 +55,12 @@ I:\Friend Hub\admin\.env.example
 Structure:
 
 ```env
-VITE_API_BASE_URL=https://friend-hub-backend.onrender.com
-VITE_ADMIN_TOKEN=change-this-long-admin-token
+VITE_API_URL=https://friend-hub-backend.onrender.com/api
+# Optional fallback if VITE_API_URL is not set:
+# VITE_API_BASE_URL=https://friend-hub-backend.onrender.com
 ```
 
-`VITE_ADMIN_TOKEN` must match backend `ADMIN_TOKEN`.
+The admin frontend uses JWT login through the backend. Do not put backend admin secrets in Vite env.
 
 ## 3. Backend API
 
@@ -78,17 +81,18 @@ Structure:
 ```env
 PORT=8080
 NODE_ENV=production
-CLIENT_URL=https://friend-hub-frontend.vercel.app
-ADMIN_URL=https://friend-hub-admin.vercel.app
-ADMIN_TOKEN=change-this-long-admin-token
-ADMIN_USERNAME=mdibrahim
-ADMIN_PASSWORD=Mdid@123
-DEFAULT_PARTNER_LOGIN_ID=sonu119
-DEFAULT_PARTNER_PASSWORD=Mdid@119
+CLIENT_URL=https://friend-hub-pi.vercel.app
+ADMIN_URL=https://friend-hub-pi.vercel.app
+CORS_ORIGINS=https://friend-hub-pi.vercel.app
+ADMIN_TOKEN=replace-with-long-random-admin-token
+ADMIN_USERNAME=replace-with-admin-username
+ADMIN_PASSWORD=replace-with-strong-admin-password
+DEFAULT_PARTNER_LOGIN_ID=replace-with-partner-login-id
+DEFAULT_PARTNER_PASSWORD=replace-with-partner-password
 JWT_SECRET=change-this-long-random-jwt-secret
 FIREBASE_PROJECT_ID=xxxx
 FIRESTORE_ENABLED=true
-FIREBASE_STORAGE_BUCKET=xxxx.appspot.com
+FIREBASE_STORAGE_BUCKET=xxxx.firebasestorage.app
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@xxxx.iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nPASTE_PRIVATE_KEY_WITH_N_SLASHES_HERE\n-----END PRIVATE KEY-----\n"
 CLOUDINARY_CLOUD_NAME=xxxx
