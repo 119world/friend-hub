@@ -23,7 +23,7 @@ export default function Matches({ mode = "matches" }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [chats, setChats] = useState([]);
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState(null);
 
   useEffect(() => {
     if (!useFirestore || !user || user.isLocal) return undefined;
@@ -35,7 +35,7 @@ export default function Matches({ mode = "matches" }) {
 
   const threads = useMemo(() => {
     if (!chats.length) {
-      const adminMatches = profiles.filter((item) => item.showInMatches !== false);
+      const adminMatches = Array.isArray(profiles) ? profiles.filter((item) => item.showInMatches !== false) : [];
       if (adminMatches.length) {
         return adminMatches.map((item) => ({
           id: `local_${item.id}`,
@@ -48,7 +48,7 @@ export default function Matches({ mode = "matches" }) {
           target: item
         }));
       }
-      return sampleThreads;
+      return profiles === null ? sampleThreads : [];
     }
     return chats.map((chat) => ({
       id: chat.id,
@@ -61,8 +61,8 @@ export default function Matches({ mode = "matches" }) {
   }, [chats, profiles]);
 
   const newMatches = useMemo(() => {
-    const adminMatches = profiles.filter((item) => item.showInMatches !== false);
-    return adminMatches.length ? adminMatches.slice(0, 8) : sampleProfiles.slice(1, 4);
+    const adminMatches = Array.isArray(profiles) ? profiles.filter((item) => item.showInMatches !== false) : [];
+    return adminMatches.length ? adminMatches : (profiles === null ? sampleProfiles.slice(1) : []);
   }, [profiles]);
 
   async function openTarget(target) {
@@ -89,30 +89,44 @@ export default function Matches({ mode = "matches" }) {
 
       <section className="mt-8">
         <h2 className="text-[23px] font-black">New Connections</h2>
-        <div className="mt-5 grid grid-cols-4 gap-4 pb-2">
-          <Link to="/likes" className="shrink-0 text-center">
-            <div className="relative mx-auto h-[68px] w-[68px] rounded-full bg-gradient-to-br from-amber-400 to-[#f72565] p-[3px] min-[390px]:h-[76px] min-[390px]:w-[76px]">
-              <img src={sampleProfiles[0].photos[0]} className="h-full w-full rounded-full border-2 border-white object-cover" />
-              <span className="absolute -right-2 top-0 rounded-full bg-[#f72565] px-2 py-1 text-xs font-black text-white">99+</span>
-              <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-[#f72565]" />
-            </div>
-            <span className="mt-2 block text-sm font-bold">Likes</span>
-          </Link>
-          {newMatches.map((item) => (
-            <button key={item.id} onClick={() => openTarget(item)} className="shrink-0 text-center">
-              <div className="relative mx-auto h-[68px] w-[68px] rounded-full bg-[#f72565] p-[3px] min-[390px]:h-[76px] min-[390px]:w-[76px]">
-                <AvatarMedia item={item} className="h-full w-full rounded-full border-2 border-white" />
+        <div className="-mx-6 mt-5 overflow-x-auto overscroll-x-contain scroll-smooth px-6 pb-3 hide-scrollbar">
+          <div className="flex w-max flex-nowrap items-start gap-4">
+            <Link to="/likes" className="w-[76px] flex-none text-center min-[390px]:w-[82px]" aria-label="Open likes">
+              <div className="relative mx-auto h-[68px] w-[68px] rounded-full bg-gradient-to-br from-amber-400 to-[#f72565] p-[3px] min-[390px]:h-[76px] min-[390px]:w-[76px]">
+                <img src={sampleProfiles[0].photos[0]} className="h-full w-full rounded-full border-2 border-white object-cover" />
+                <span className="absolute -right-2 top-0 rounded-full bg-[#f72565] px-2 py-1 text-xs font-black text-white">99+</span>
                 <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-[#f72565]" />
               </div>
-              <span className="mt-2 block truncate text-sm font-bold">{item.name}</span>
-            </button>
-          ))}
+              <span className="mt-2 block text-sm font-bold">Likes</span>
+            </Link>
+            {newMatches.map((item) => (
+              <button key={item.id} onClick={() => openTarget(item)} className="w-[76px] flex-none text-center min-[390px]:w-[82px]" aria-label={`Open ${item.name}`}>
+                <div className="relative mx-auto h-[68px] w-[68px] rounded-full bg-[#f72565] p-[3px] min-[390px]:h-[76px] min-[390px]:w-[76px]">
+                  <AvatarMedia item={item} className="h-full w-full rounded-full border-2 border-white" />
+                  <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-[#f72565]" />
+                </div>
+                <span className="mt-2 block truncate text-sm font-bold">{item.name}</span>
+              </button>
+            ))}
+            {profiles !== null && !newMatches.length && (
+              <div className="w-[180px] flex-none rounded-2xl bg-zinc-50 px-4 py-5 text-left">
+                <p className="text-sm font-black text-zinc-700">No new profiles</p>
+                <p className="mt-1 text-xs font-semibold text-zinc-500">Admin se partner add karo.</p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
       <section className="mt-8">
         <h2 className="text-[23px] font-black">Messages</h2>
         <div className="mt-5 divide-y divide-zinc-100">
+          {profiles !== null && !threads.length && (
+            <div className="rounded-3xl bg-zinc-50 px-5 py-8 text-center">
+              <p className="text-base font-black text-zinc-700">No messages yet</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">New partner profiles add hote hi yahan conversations dikhengi.</p>
+            </div>
+          )}
           {threads.map((thread) => (
             <button key={thread.id} onClick={() => openThread(thread)} className="flex w-full items-center gap-4 py-5 text-left">
               <div className="relative h-[70px] w-[70px] shrink-0 rounded-full bg-[#f72565] p-[2px]">

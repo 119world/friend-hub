@@ -53,6 +53,18 @@ export function upsertCredentialResource(name, item) {
   return item;
 }
 
+export function deleteCredentialResource(name, id) {
+  const key = clean(id);
+  const list = memory[name] || [];
+  memory[name] = list.filter((entry) => entry.id !== key && entry.partnerId !== key);
+  return true;
+}
+
+export function clearCredentialResource(name) {
+  memory[name] = [];
+  return true;
+}
+
 export function isValidAdminCredential(loginId, password) {
   return Boolean(findAdminAccountFromMemory(loginId, password));
 }

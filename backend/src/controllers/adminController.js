@@ -1,7 +1,7 @@
 import { db, firebaseAdmin, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
 import { env } from "../config/env.js";
-import { listCredentialResource, upsertCredentialResource } from "../services/credentialStore.js";
-import { clearLocalResource, deleteLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
+import { clearCredentialResource, deleteCredentialResource, listCredentialResource, upsertCredentialResource } from "../services/credentialStore.js";
+import { clearLocalResource, deleteLocalResource, hasLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
 import { creditWallet } from "../services/paymentService.js";
 import { startOfDay, startOfMonth, startOfWeek, startOfYear } from "../utils/timeWindow.js";
 
@@ -78,6 +78,13 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
+function slugify(value) {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || `partner_${Date.now()}`;
+}
+
 function normalizeValue(key, value) {
   if (value === "") return null;
   if (booleanFields.has(key)) {
@@ -138,6 +145,18 @@ function normalizePayload(resource, body) {
   }
   if (resource === "mediaAssets") {
     payload.active = payload.active !== false;
+  }
+  if (resource === "partnerAccounts") {
+    payload.loginId = cleanText(payload.loginId || payload.username);
+    payload.partnerId = cleanText(payload.partnerId || payload.id || (payload.loginId ? `partner_${slugify(payload.loginId)}` : ""));
+    payload.displayName = cleanText(payload.displayName || payload.name || payload.loginId || "Partner");
+    payload.role = payload.role || "partner";
+    payload.active = payload.active !== false;
+    const password = String(payload.password || payload.temporaryAccessCode || "");
+    if (password) {
+      payload.password = password;
+      payload.temporaryAccessCode = password;
+    }
   }
   if (resource === "paymentAccounts") {
     payload.active = payload.active !== false;
@@ -203,6 +222,67 @@ async function upsertPublicPartnerFromAccount(account) {
   }
   await upsertLocalResource("partners", profile);
   return profile;
+}
+
+async function listLinkedPartnerAccounts(partnerId) {
+  const id = cleanText(partnerId);
+  if (!id) return [];
+  const matches = [];
+  if (hasFirestoreCredentials) {
+    try {
+      const snap = await db.collection("partnerAccounts").where("partnerId", "==", id).limit(100).get();
+      matches.push(...snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    } catch {}
+    try {
+      const direct = await db.collection("partnerAccounts").doc(id).get();
+      if (direct.exists && !matches.some((item) => item.id === direct.id)) {
+        matches.push({ id: direct.id, ...direct.data() });
+      }
+    } catch {}
+  }
+  const local = await listLocalResource("partnerAccounts");
+  for (const item of local) {
+    if ((item.id === id || item.partnerId === id) && !matches.some((old) => old.id === item.id)) {
+      matches.push(item);
+    }
+  }
+  return matches;
+}
+
+async function deletePartnerAccountAndProfile(id, existing = null) {
+  const accountId = cleanText(id);
+  const partnerId = cleanText(existing?.partnerId || accountId);
+  if (hasFirestoreCredentials) {
+    try {
+      await db.collection("partnerAccounts").doc(accountId).delete();
+    } catch {}
+    if (partnerId) {
+      try {
+        await db.collection("partners").doc(partnerId).delete();
+      } catch {}
+    }
+  }
+  await deleteLocalResource("partnerAccounts", accountId);
+  deleteCredentialResource("partnerAccounts", accountId);
+  if (partnerId) {
+    await deleteLocalResource("partners", partnerId);
+    deleteCredentialResource("partnerAccounts", partnerId);
+  }
+}
+
+async function deletePartnerProfileAndLinkedAccounts(partnerId) {
+  const id = cleanText(partnerId);
+  if (!id) return;
+  const accounts = await listLinkedPartnerAccounts(id);
+  if (hasFirestoreCredentials) {
+    try {
+      await db.collection("partners").doc(id).delete();
+    } catch {}
+  }
+  await deleteLocalResource("partners", id);
+  for (const account of accounts) {
+    await deletePartnerAccountAndProfile(account.id, account);
+  }
 }
 
 function maskSensitive(name, data) {
@@ -300,9 +380,12 @@ export async function listResource(req, res) {
   const name = collectionMap[req.params.resource];
   if (!name) return res.status(404).json({ message: "Unknown resource" });
   if (!hasFirestoreCredentials && (name === "adminAccounts" || name === "partnerAccounts")) {
-    return res.json({ items: listCredentialResource(name).map((item) => maskSensitive(name, item)), demo: true });
+    const localExists = await hasLocalResource(name);
+    const localItems = localExists ? await listLocalResource(name) : [];
+    const source = localExists ? localItems : listCredentialResource(name);
+    return res.json({ items: source.map((item) => maskSensitive(name, item)), demo: true });
   }
-  const snap = hasFirestoreCredentials ? await db.collection(name).limit(100).get().catch(() => null) : null;
+  const snap = hasFirestoreCredentials ? await db.collection(name).limit(1000).get().catch(() => null) : null;
   if (!snap) {
     const items = (await listLocalResource(name)).map((item) => maskSensitive(name, item));
     return res.json({ items, demo: true });
@@ -358,14 +441,19 @@ export async function updateResource(req, res) {
   const name = collectionMap[req.params.resource];
   if (!name) return res.status(404).json({ message: "Unknown resource" });
   const clean = normalizePayload(name, req.body);
+  let previous = null;
   try {
     if (!hasFirestoreCredentials) throw new Error("Local demo store");
+    if (name === "partnerAccounts") {
+      const snap = await db.collection(name).doc(req.params.id).get();
+      if (snap.exists) previous = { id: snap.id, ...snap.data() };
+    }
     await db.collection(name).doc(req.params.id).set({
       ...clean,
       updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     if (name === "partnerAccounts") {
-      await upsertPublicPartnerFromAccount({ id: req.params.id, ...clean });
+      await upsertPublicPartnerFromAccount({ ...(previous || {}), id: req.params.id, ...clean });
     }
   } catch {
     if (!shouldUseLocalFallback()) return sendDatabaseError(res);
@@ -398,33 +486,29 @@ export async function deleteResource(req, res) {
       const snap = await db.collection(name).doc(id).get();
       if (snap.exists) existing = { id: snap.id, ...snap.data() };
     }
+    if (name === "partners") {
+      await deletePartnerProfileAndLinkedAccounts(id);
+      return res.json({ ok: true });
+    }
     await db.collection(name).doc(id).delete();
   } catch {
     if (!shouldUseLocalFallback()) return sendDatabaseError(res);
     if (name === "partnerAccounts") {
       existing ||= (await listLocalResource(name)).find((item) => item.id === id) || null;
     }
+    if (name === "partners") {
+      await deletePartnerProfileAndLinkedAccounts(id);
+      return res.json({ ok: true, demo: true });
+    }
     await deleteLocalResource(name, id);
     if (name === "partnerAccounts") {
-      await deleteLocalResource("partners", id);
-      if (existing?.partnerId && existing.partnerId !== id) {
-        await deleteLocalResource("partners", existing.partnerId);
-      }
+      await deletePartnerAccountAndProfile(id, existing);
     }
     return res.json({ ok: true, demo: true });
   }
   await deleteLocalResource(name, id);
   if (name === "partnerAccounts") {
-    try {
-      await db.collection("partners").doc(existing?.partnerId || id).delete();
-    } catch {}
-    await deleteLocalResource("partners", id);
-    if (existing?.partnerId && existing.partnerId !== id) {
-      try {
-        await db.collection("partners").doc(existing.partnerId).delete();
-      } catch {}
-      await deleteLocalResource("partners", existing.partnerId);
-    }
+    await deletePartnerAccountAndProfile(id, existing);
   }
   return res.json({ ok: true });
 }
@@ -461,11 +545,17 @@ export async function clearResource(req, res) {
   try {
     if (!hasFirestoreCredentials) throw new Error("Local demo store");
     await deleteFirestoreDocs(name, existing);
+    if (name === "partners") {
+      await deleteFirestoreDocs("partnerAccounts", await listResourceItems("partnerAccounts"));
+      clearCredentialResource("partnerAccounts");
+    }
   } catch {
     if (!shouldUseLocalFallback()) return sendDatabaseError(res);
     await clearLocalResource(name);
-    if (name === "partnerAccounts") {
+    if (name === "partnerAccounts" || name === "partners") {
       await clearLocalResource("partners");
+      await clearLocalResource("partnerAccounts");
+      clearCredentialResource("partnerAccounts");
     }
     return res.json({ ok: true, deleted: existing.length, demo: true });
   }
@@ -473,6 +563,11 @@ export async function clearResource(req, res) {
   if (name === "partnerAccounts") {
     await deleteFirestoreDocs("partners", existing.map((item) => ({ id: item.partnerId || item.id })));
     await clearLocalResource("partners");
+    clearCredentialResource("partnerAccounts");
+  }
+  if (name === "partners") {
+    await clearLocalResource("partnerAccounts");
+    clearCredentialResource("partnerAccounts");
   }
   return res.json({ ok: true, deleted: existing.length });
 }

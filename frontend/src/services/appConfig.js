@@ -1,6 +1,6 @@
 import api from "./api";
 
-const POLL_MS = 30000;
+const POLL_MS = 5000;
 
 export const defaultPlans = [
   { id: "first_9", title: "First-time Offer", originalPrice: 19, price: 9, diamonds: 30, minutes: 1, active: true, subscription: false, autoPay: true, autoPayAmount: 9 },
@@ -40,11 +40,29 @@ async function loadFirestore() {
 
 async function apiFallback(path, fallback) {
   try {
-    const { data } = await api.get(path);
+    const separator = path.includes("?") ? "&" : "?";
+    const { data } = await api.get(`${path}${separator}_=${Date.now()}`);
     return data.item || data.items || fallback;
   } catch {
     return fallback;
   }
+}
+
+function startPolling(load) {
+  load();
+  const timer = window.setInterval(load, POLL_MS);
+  const refreshOnVisible = () => {
+    if (!document.hidden) load();
+  };
+  window.addEventListener("focus", load);
+  window.addEventListener("pageshow", load);
+  document.addEventListener("visibilitychange", refreshOnVisible);
+  return () => {
+    window.clearInterval(timer);
+    window.removeEventListener("focus", load);
+    window.removeEventListener("pageshow", load);
+    document.removeEventListener("visibilitychange", refreshOnVisible);
+  };
 }
 
 function normalizeProfile(id, type, data) {
@@ -69,11 +87,10 @@ export function listenWelcomeConfig(cb) {
   if (!useFirestore) {
     let live = true;
     const load = () => apiFallback("/public/welcome", defaultWelcome).then((item) => live && cb({ ...defaultWelcome, ...item }));
-    load();
-    const timer = window.setInterval(load, POLL_MS);
+    const stopPolling = startPolling(load);
     return () => {
       live = false;
-      window.clearInterval(timer);
+      stopPolling();
     };
   }
   let unsub = () => {};
@@ -94,11 +111,10 @@ export function listenPlans(cb) {
   if (!useFirestore) {
     let live = true;
     const load = () => apiFallback("/public/plans", defaultPlans).then((items) => live && cb(items.length ? items : defaultPlans));
-    load();
-    const timer = window.setInterval(load, POLL_MS);
+    const stopPolling = startPolling(load);
     return () => {
       live = false;
-      window.clearInterval(timer);
+      stopPolling();
     };
   }
   let unsub = () => {};
@@ -121,11 +137,10 @@ export function listenReplyConfig(cb) {
   if (!useFirestore) {
     let live = true;
     const load = () => apiFallback("/public/reply-config", defaultReplyConfig).then((item) => live && cb({ ...defaultReplyConfig, ...item }));
-    load();
-    const timer = window.setInterval(load, POLL_MS);
+    const stopPolling = startPolling(load);
     return () => {
       live = false;
-      window.clearInterval(timer);
+      stopPolling();
     };
   }
   let unsub = () => {};
@@ -146,11 +161,10 @@ export function listenPublicProfiles(cb) {
   if (!useFirestore) {
     let live = true;
     const load = () => apiFallback("/public/profiles", []).then((items) => live && cb(items.map((item) => normalizeProfile(item.id, item.type, item))));
-    load();
-    const timer = window.setInterval(load, POLL_MS);
+    const stopPolling = startPolling(load);
     return () => {
       live = false;
-      window.clearInterval(timer);
+      stopPolling();
     };
   }
   const values = { partners: [], bots: [] };

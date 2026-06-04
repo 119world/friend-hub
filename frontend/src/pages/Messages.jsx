@@ -17,12 +17,12 @@ function AvatarMedia({ item, className = "" }) {
 export default function Messages() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState(null);
 
   useEffect(() => listenPublicProfiles(setProfiles), []);
 
   const threads = useMemo(() => {
-    if (profiles.length) {
+    if (Array.isArray(profiles) && profiles.length) {
       return profiles
         .filter((item) => item.showInMatches !== false)
         .slice(0, 12)
@@ -37,7 +37,7 @@ export default function Messages() {
           videos: item.videos
         }));
     }
-    return sampleThreads;
+    return profiles === null ? sampleThreads : [];
   }, [profiles]);
 
   async function openThread(thread) {
@@ -63,6 +63,12 @@ export default function Messages() {
 
       <section className="mt-8 pb-6">
         <div className="divide-y divide-zinc-100">
+          {profiles !== null && !threads.length && (
+            <div className="rounded-3xl bg-zinc-50 px-5 py-8 text-center">
+              <p className="text-base font-black text-zinc-700">No messages yet</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">Admin se partner profile add karne ke baad chats yahan show hongi.</p>
+            </div>
+          )}
           {threads.map((thread) => (
             <button key={thread.id} onClick={() => openThread(thread)} className="flex w-full items-center gap-4 py-5 text-left">
               <div className="relative h-[70px] w-[70px] shrink-0 rounded-full bg-[#f72565] p-[2px]">

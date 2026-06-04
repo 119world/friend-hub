@@ -6,7 +6,7 @@ import {
   findPartnerAccountFromMemory,
   upsertCredentialResource
 } from "../services/credentialStore.js";
-import { getLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
+import { getLocalResource, hasLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
 
 const MAX_PHOTOS = 7;
 const MAX_VIDEOS = 2;
@@ -210,8 +210,9 @@ async function listPartnerAccounts() {
       items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } catch {}
   }
+  const localExists = await hasLocalResource("partnerAccounts");
   if (!items.length) items = await listLocalResource("partnerAccounts");
-  if (!items.length) {
+  if (!items.length && !localExists) {
     const fallback = findPartnerAccountByIdFromMemory(`partner_${slugify(env.defaultPartnerLoginId)}`);
     if (fallback) items = [fallback];
   }

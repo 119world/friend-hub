@@ -47,6 +47,11 @@ export async function listLocalResource(name) {
   return Array.isArray(store[name]) ? store[name] : [];
 }
 
+export async function hasLocalResource(name) {
+  const store = await readStore();
+  return Object.prototype.hasOwnProperty.call(store, name);
+}
+
 export async function upsertLocalResource(name, item) {
   const store = await readStore();
   const items = Array.isArray(store[name]) ? store[name] : [];

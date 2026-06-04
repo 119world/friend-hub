@@ -12,7 +12,7 @@ import { sampleProfiles } from "../utils/sampleData";
 export default function Discovery() {
   const { user, profile: myProfile, logout } = useAuth();
   const navigate = useNavigate();
-  const [remote, setRemote] = useState([]);
+  const [remote, setRemote] = useState(null);
   const [dismissedIds, setDismissedIds] = useState([]);
   const [photoIndexes, setPhotoIndexes] = useState({});
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,8 +21,8 @@ export default function Discovery() {
   const [filters, setFilters] = useState({ type: "all", onlineOnly: false, verifiedOnly: false, minAge: 18, maxAge: 45, distanceKm: "all", interest: "" });
 
   const profiles = useMemo(() => {
-    const adminSource = remote.filter((item) => item.showInDiscovery !== false);
-    const source = adminSource.length ? adminSource : sampleProfiles;
+    const adminSource = Array.isArray(remote) ? remote.filter((item) => item.showInDiscovery !== false) : [];
+    const source = remote === null ? sampleProfiles : adminSource;
     const filtered = source.filter((item) => {
       const age = Number(item.age || 0);
       const matchesType = filters.type === "all" || item.type === filters.type;
@@ -37,7 +37,7 @@ export default function Discovery() {
       const matchesDistance = filters.distanceKm === "all" || !Number.isFinite(itemDistance) || itemDistance <= Number(filters.distanceKm);
       return matchesType && matchesOnline && matchesVerified && matchesAge && matchesDistance && matchesInterest;
     });
-    return filtered.length ? filtered : source;
+    return filtered.length || remote !== null ? filtered : source;
   }, [remote, filters, myProfile]);
   const visibleProfiles = useMemo(() => {
     const available = profiles.filter((item) => !dismissedIds.includes(item.id));
@@ -132,6 +132,12 @@ export default function Discovery() {
       </header>
 
       <div className="space-y-5">
+        {remote !== null && !visibleProfiles.length && (
+          <div className="rounded-[28px] bg-zinc-50 px-5 py-10 text-center">
+            <h2 className="text-xl font-black">No profiles available</h2>
+            <p className="mt-2 text-sm font-semibold text-zinc-500">Admin panel se partner profile add karo, phir yahan automatically show hogi.</p>
+          </div>
+        )}
         {visibleProfiles.map((item, cardIndex) => {
           const media = getMedia(item);
           const photoIndex = photoIndexes[item.id] || 0;

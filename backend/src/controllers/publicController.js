@@ -1,5 +1,4 @@
 import { db, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
-import { listCredentialResource } from "../services/credentialStore.js";
 import { listLocalResource, getLocalResource } from "../services/localDataStore.js";
 
 const defaultPlans = [
@@ -57,7 +56,7 @@ async function listCollection(name, options = {}) {
   if (hasFirestoreCredentials) {
     try {
       const ref = options.activeOnly ? db.collection(name).where("active", "==", true) : db.collection(name);
-      const snap = await ref.limit?.(100)?.get?.() || await ref.get();
+      const snap = await ref.limit?.(1000)?.get?.() || await ref.get();
       return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } catch {}
   }
@@ -73,7 +72,6 @@ async function listPartnerAccounts() {
     } catch {}
   }
   if (!items.length) items = await listLocalResource("partnerAccounts");
-  if (!items.length) items = listCredentialResource("partnerAccounts");
   return items.filter((item) => item.active !== false);
 }
 
