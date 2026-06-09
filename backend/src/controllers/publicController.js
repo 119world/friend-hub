@@ -73,7 +73,7 @@ async function listPartnerAccounts(options = {}) {
       if (options.localFallback === false) return [];
     }
   }
-  if (!items.length) items = await listLocalResource("partnerAccounts");
+  if (!items.length && options.localFallback !== false) items = await listLocalResource("partnerAccounts");
   return items.filter((item) => item.active !== false);
 }
 

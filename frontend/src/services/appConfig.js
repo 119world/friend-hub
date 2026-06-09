@@ -173,6 +173,20 @@ function publishProfiles(items, source) {
   return profiles;
 }
 
+function publishRealtimeProfiles(items) {
+  const incoming = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeProfile(item.id, "partner", item))
+    .filter(isPublicPartnerProfile);
+
+  if (!incoming.length && profileState.profiles.length) {
+    return profileState.profiles;
+  }
+
+  const incomingIds = new Set(incoming.map((item) => item.id));
+  const preserved = profileState.profiles.filter((item) => !incomingIds.has(item.id));
+  return publishProfiles([...incoming, ...preserved], "firestore");
+}
+
 async function fetchPublicProfilesWithRetry() {
   if (profileFetchInFlight) return profileFetchInFlight;
 
@@ -330,7 +344,7 @@ export function listenPublicProfilesState(cb) {
         const partnerQ = query(collection(db, "partners"), where("active", "==", true));
 
         unsubPartners = onSnapshot(partnerQ, (snap) => {
-          publishProfiles(snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data())), "firestore");
+          publishRealtimeProfiles(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
         }, () => fetchPublicProfilesWithRetry());
       }).catch(() => fetchPublicProfilesWithRetry());
     }
