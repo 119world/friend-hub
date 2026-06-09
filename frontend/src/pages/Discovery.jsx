@@ -211,7 +211,7 @@ export default function Discovery() {
                   )}
                 </AnimatePresence>
                 <div className="absolute inset-0 glass-gradient" />
-                <div className="absolute left-4 top-4 rounded-full bg-[#ff2f7e] px-4 py-2 text-sm font-black text-white">{item.type === "bot" ? "Friend Hub" : "New here"}</div>
+                <div className="absolute left-4 top-4 rounded-full bg-[#ff2f7e] px-4 py-2 text-sm font-black text-white">New here</div>
                 <div className="absolute right-4 top-4 rounded-full border border-white/45 bg-black/25 px-3 py-1.5 text-sm font-black text-white">{photoIndex + 1}/{media.length || 1}</div>
                 {media.length > 1 && (
                   <>
@@ -319,8 +319,7 @@ export default function Discovery() {
               <div className="mt-5 grid grid-cols-3 gap-2">
                 {[
                   ["all", "All"],
-                  ["partner", "Partners"],
-                  ["bot", "Friend Hub"]
+                  ["partner", "Partners"]
                 ].map(([value, label]) => (
                   <button
                     key={value}

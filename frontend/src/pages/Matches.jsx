@@ -48,7 +48,9 @@ export default function Matches({ mode = "matches" }) {
   useEffect(() => {
     if (!useFirestore || !user || user.isLocal) return undefined;
     const q = query(collection(db, "chats"), where("participants", "array-contains", user.uid), orderBy("updatedAt", "desc"));
-    return onSnapshot(q, (snap) => setChats(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))), () => {});
+    return onSnapshot(q, (snap) => {
+      setChats(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter((chat) => chat.targetType !== "bot"));
+    }, () => {});
   }, [user]);
 
   const threads = useMemo(() => {
@@ -60,7 +62,7 @@ export default function Matches({ mode = "matches" }) {
           name: item.name,
           photo: item.photos?.[0] || "",
           videos: item.videos || [],
-          preview: item.type === "bot" ? (item.welcomeMessage || "Friend Hub is online") : (item.bio || "Verified community profile is online"),
+          preview: item.bio || "Verified community profile is online",
           time: item.online === false ? "Offline" : "Online",
           unread: item.allowAutoContact === false ? 0 : 1,
           target: item
@@ -72,7 +74,7 @@ export default function Matches({ mode = "matches" }) {
       id: chat.id,
       name: chat.targetName || "Friend",
       photo: chat.targetPhoto || "",
-      preview: chat.targetType === "bot" ? "Friend Hub chat" : "Verified community chat",
+      preview: "Verified community chat",
       time: "Now",
       unread: chat.unreadByUser || 0
     }));

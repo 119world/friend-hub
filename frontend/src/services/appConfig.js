@@ -56,6 +56,10 @@ function wait(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function isPublicPartnerProfile(item) {
+  return item?.active !== false && (item?.type || "partner") === "partner";
+}
+
 function readProfileCache() {
   try {
     const cached = JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY) || "null");
@@ -65,7 +69,7 @@ function readProfileCache() {
       return { profiles: [], updatedAt: 0 };
     }
     return {
-      profiles: cached.profiles.map((item) => normalizeProfile(item.id, item.type, item)).filter((item) => item.active !== false),
+      profiles: cached.profiles.map((item) => normalizeProfile(item.id, item.type || "partner", item)).filter(isPublicPartnerProfile),
       updatedAt: Number(cached.updatedAt || 0)
     };
   } catch {
@@ -134,7 +138,6 @@ const profileSubscribers = new Set();
 let profileResourceStarted = false;
 let profileRefreshTimer = null;
 let profileFetchInFlight = null;
-let stopProfileResource = null;
 
 let profileState = {
   profiles: cachedProfiles.profiles,
@@ -153,8 +156,8 @@ function emitProfileState(patch = {}) {
 
 function publishProfiles(items, source) {
   const profiles = (Array.isArray(items) ? items : [])
-    .map((item) => normalizeProfile(item.id, item.type, item))
-    .filter((item) => item.active !== false);
+    .map((item) => normalizeProfile(item.id, item.type || "partner", item))
+    .filter(isPublicPartnerProfile);
   const updatedAt = Date.now();
   writeProfileCache(profiles);
   preloadProfileImages(profiles);
@@ -319,51 +322,29 @@ export function listenPublicProfilesState(cb) {
     profileResourceStarted = true;
     let stopApiRefresh = startProfileApiRefresh();
     let unsubPartners = () => {};
-    let unsubBots = () => {};
     let closed = false;
 
     if (useFirestore) {
-      const values = { partners: [], bots: [] };
-      const ready = { partners: false, bots: false };
-      const emitRealtime = () => {
-        if (!ready.partners || !ready.bots) return;
-        publishProfiles([...values.partners, ...values.bots], "firestore");
-      };
-
       loadFirestore().then(({ collection, onSnapshot, query, where, db }) => {
         if (closed) return;
         const partnerQ = query(collection(db, "partners"), where("active", "==", true));
-        const botQ = query(collection(db, "aiBots"), where("active", "==", true));
 
         unsubPartners = onSnapshot(partnerQ, (snap) => {
-          ready.partners = true;
-          values.partners = snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data()));
-          emitRealtime();
-        }, () => fetchPublicProfilesWithRetry());
-
-        unsubBots = onSnapshot(botQ, (snap) => {
-          ready.bots = true;
-          values.bots = snap.docs.map((item) => normalizeProfile(item.id, "bot", item.data()));
-          emitRealtime();
+          publishProfiles(snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data())), "firestore");
         }, () => fetchPublicProfilesWithRetry());
       }).catch(() => fetchPublicProfilesWithRetry());
     }
 
-    stopProfileResource = () => {
+    const stopProfileResource = () => {
       closed = true;
       stopApiRefresh?.();
       unsubPartners();
-      unsubBots();
     };
+    window.addEventListener("beforeunload", stopProfileResource, { once: true });
   }
 
   return () => {
     profileSubscribers.delete(cb);
-    if (!profileSubscribers.size && stopProfileResource) {
-      stopProfileResource();
-      stopProfileResource = null;
-      profileResourceStarted = false;
-    }
   };
 }
 

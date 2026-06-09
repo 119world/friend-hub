@@ -56,18 +56,22 @@ async function listCollection(name, options = {}) {
       const ref = options.activeOnly ? db.collection(name).where("active", "==", true) : db.collection(name);
       const snap = await ref.limit?.(1000)?.get?.() || await ref.get();
       return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    } catch {}
+    } catch {
+      if (options.localFallback === false) return [];
+    }
   }
   return listLocalResource(name);
 }
 
-async function listPartnerAccounts() {
+async function listPartnerAccounts(options = {}) {
   let items = [];
   if (hasFirestoreCredentials) {
     try {
       const snap = await db.collection("partnerAccounts").limit(1000).get();
       items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    } catch {}
+    } catch {
+      if (options.localFallback === false) return [];
+    }
   }
   if (!items.length) items = await listLocalResource("partnerAccounts");
   return items.filter((item) => item.active !== false);
@@ -103,10 +107,9 @@ function profileFromAccount(account) {
 }
 
 export async function publicProfiles(req, res) {
-  const [partnerItems, partnerAccounts, botItems] = await Promise.all([
-    listCollection("partners", { activeOnly: true }),
-    listPartnerAccounts(),
-    listCollection("aiBots", { activeOnly: true })
+  const [partnerItems, partnerAccounts] = await Promise.all([
+    listCollection("partners", { activeOnly: true, localFallback: !hasFirestoreCredentials }),
+    listPartnerAccounts({ localFallback: !hasFirestoreCredentials })
   ]);
 
   const partners = partnerItems
@@ -116,11 +119,8 @@ export async function publicProfiles(req, res) {
   const accountProfiles = partnerAccounts
     .map(profileFromAccount)
     .filter((item) => item.active !== false && item.showInDiscovery !== false && !knownPartnerIds.has(clean(item.id)));
-  const bots = botItems
-    .filter((item) => item.active !== false)
-    .map((item) => normalizeProfile(item.id, "bot", item));
   res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
-  res.json({ items: [...accountProfiles, ...partners, ...bots] });
+  res.json({ items: [...accountProfiles, ...partners] });
 }
 
 export async function publicPlans(req, res) {

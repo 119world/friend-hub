@@ -72,7 +72,6 @@ function sendDatabaseError(res, message = "Database connection failed. Please ch
   return res.status(503).json({ message });
 }
 const booleanFields = new Set(["active", "verified", "online", "autoPay", "subscription", "subscriptionEnabled", "manualFailover", "rechargeTrigger", "offerTrigger", "showInDiscovery", "showInMatches", "allowAutoContact", "autoRecycleOnExhaustion", "maintenanceMode"]);
-const defaultPartnerPhoto = "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85";
 
 function cleanText(value) {
   return String(value || "").trim();
@@ -196,8 +195,8 @@ async function upsertPublicPartnerFromAccount(account) {
     phone: cleanText(account.phone || existingLocal.phone),
     bio: cleanText(account.bio || existingLocal.bio || "Friendly profile on Friend Hub."),
     interests: Array.isArray(account.interests) && account.interests.length ? account.interests : (Array.isArray(existingLocal.interests) && existingLocal.interests.length ? existingLocal.interests : ["Chatting"]),
-    photos: Array.isArray(account.photos) && account.photos.length ? account.photos : (Array.isArray(existingLocal.photos) && existingLocal.photos.length ? existingLocal.photos : [defaultPartnerPhoto]),
-    galleryPhotos: Array.isArray(account.galleryPhotos) && account.galleryPhotos.length ? account.galleryPhotos : (Array.isArray(existingLocal.galleryPhotos) && existingLocal.galleryPhotos.length ? existingLocal.galleryPhotos : [defaultPartnerPhoto]),
+    photos: Array.isArray(account.photos) && account.photos.length ? account.photos : (Array.isArray(existingLocal.photos) && existingLocal.photos.length ? existingLocal.photos : []),
+    galleryPhotos: Array.isArray(account.galleryPhotos) && account.galleryPhotos.length ? account.galleryPhotos : (Array.isArray(existingLocal.galleryPhotos) && existingLocal.galleryPhotos.length ? existingLocal.galleryPhotos : []),
     videos: Array.isArray(account.videos) ? account.videos : (Array.isArray(existingLocal.videos) ? existingLocal.videos : []),
     online: account.online !== false,
     verified: account.verified !== false,

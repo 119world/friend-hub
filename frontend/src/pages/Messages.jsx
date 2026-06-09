@@ -39,7 +39,7 @@ export default function Messages() {
         .map((item) => ({
           id: `thread_${item.id}`,
           name: item.name,
-          preview: item.type === "bot" ? (item.welcomeMessage || "Friend Hub message") : (item.bio || "Say hello and start chatting"),
+          preview: item.bio || "Say hello and start chatting",
           time: item.online === false ? "Offline" : "Online",
           unread: item.allowAutoContact === false ? 0 : 1,
           target: item,

@@ -1,16 +1,15 @@
-import { Bot, CheckCircle2, MapPin, Star } from "lucide-react";
+import { CheckCircle2, MapPin, Star } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function ProfileCard({ profile, onChat, onVoice }) {
-  const photo = profile.photos?.[0] || "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80";
-  const isBot = profile.type === "bot";
+  const photo = profile.photos?.[0] || profile.galleryPhotos?.[0] || "";
   return (
     <motion.article
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       className="overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-soft"
     >
-      <img className="h-80 w-full object-cover" src={photo} alt={profile.name} />
+      {photo ? <img className="h-80 w-full object-cover" src={photo} alt={profile.name} /> : <div className="skeleton h-80 w-full" />}
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -20,15 +19,9 @@ export default function ProfileCard({ profile, onChat, onVoice }) {
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            {isBot ? (
-              <span className="flex items-center gap-1 rounded-full bg-fuchsia-50 px-3 py-1 text-xs font-semibold text-fuchsia-700">
-                <Bot size={14} /> Friend Hub
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                <CheckCircle2 size={14} /> Verified
-              </span>
-            )}
+            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              <CheckCircle2 size={14} /> Verified
+            </span>
             <span className="flex items-center gap-1 text-sm font-semibold text-amber-500">
               <Star size={16} fill="currentColor" /> {profile.rating || 4.8}
             </span>
