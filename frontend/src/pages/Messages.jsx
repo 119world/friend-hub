@@ -1,28 +1,38 @@
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PhoneStatusBar from "../components/PhoneStatusBar";
 import { useAuth } from "../hooks/useAuth";
-import { listenPublicProfiles } from "../services/appConfig";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 import { openChat } from "../services/chatService";
-import { sampleThreads } from "../utils/sampleData";
 
 function AvatarMedia({ item, className = "" }) {
   const photo = item.photo || item.photos?.[0] || item.targetPhoto;
   const video = !photo ? item.videos?.[0] : "";
   if (video) return <video src={video} muted loop playsInline autoPlay className={`object-cover ${className}`} />;
-  return <img src={photo} className={`object-cover ${className}`} />;
+  return photo ? <img src={photo} className={`object-cover ${className}`} /> : <div className={`skeleton ${className}`} />;
+}
+
+function ThreadSkeleton() {
+  return (
+    <div className="flex items-center gap-4 py-5">
+      <div className="skeleton h-[70px] w-[70px] shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1 space-y-3">
+        <div className="skeleton h-5 w-2/5 rounded-full" />
+        <div className="skeleton h-4 w-4/5 rounded-full" />
+      </div>
+      <div className="skeleton h-4 w-12 rounded-full" />
+    </div>
+  );
 }
 
 export default function Messages() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [profiles, setProfiles] = useState(null);
-
-  useEffect(() => listenPublicProfiles(setProfiles), []);
+  const { profiles, isInitialLoading, error, isOffline } = usePublicProfiles();
 
   const threads = useMemo(() => {
-    if (Array.isArray(profiles) && profiles.length) {
+    if (profiles.length) {
       return profiles
         .filter((item) => item.showInMatches !== false)
         .slice(0, 12)
@@ -37,7 +47,7 @@ export default function Messages() {
           videos: item.videos
         }));
     }
-    return profiles === null ? sampleThreads : [];
+    return [];
   }, [profiles]);
 
   async function openThread(thread) {
@@ -63,10 +73,13 @@ export default function Messages() {
 
       <section className="mt-8 pb-6">
         <div className="divide-y divide-zinc-100">
-          {profiles !== null && !threads.length && (
+          {isInitialLoading && [0, 1, 2, 3].map((item) => <ThreadSkeleton key={item} />)}
+          {!isInitialLoading && !threads.length && (
             <div className="rounded-3xl bg-zinc-50 px-5 py-8 text-center">
               <p className="text-base font-black text-zinc-700">No messages yet</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-500">Admin se partner profile add karne ke baad chats yahan show hongi.</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">
+                {error ? (isOffline ? "Offline hai. Cached profiles available honge to messages yahan dikhengi." : "Profiles refresh retry ho raha hai.") : "Admin se partner profile add karne ke baad chats yahan show hongi."}
+              </p>
             </div>
           )}
           {threads.map((thread) => (

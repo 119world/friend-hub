@@ -4,15 +4,31 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PhoneStatusBar from "../components/PhoneStatusBar";
 import { useAuth } from "../hooks/useAuth";
-import { listenPublicProfiles } from "../services/appConfig";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 import { openChat } from "../services/chatService";
 import { haversineKm } from "../utils/distance";
-import { sampleProfiles } from "../utils/sampleData";
+
+function DiscoverySkeleton() {
+  return (
+    <div className="mock-card-shadow overflow-hidden rounded-[28px] bg-white">
+      <div className="skeleton h-[min(82vw,410px)] min-h-[318px]" />
+      <div className="space-y-3 px-4 pb-4 pt-4">
+        <div className="skeleton h-4 w-1/2 rounded-full" />
+        <div className="skeleton h-4 w-full rounded-full" />
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          <div className="skeleton h-12 rounded-full" />
+          <div className="skeleton h-12 rounded-full" />
+          <div className="skeleton h-12 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Discovery() {
   const { user, profile: myProfile, logout } = useAuth();
   const navigate = useNavigate();
-  const [remote, setRemote] = useState(null);
+  const { profiles: remoteProfiles, isInitialLoading, error, isOffline, isRefreshing } = usePublicProfiles();
   const [dismissedIds, setDismissedIds] = useState([]);
   const [photoIndexes, setPhotoIndexes] = useState({});
   const [menuOpen, setMenuOpen] = useState(false);
@@ -21,8 +37,7 @@ export default function Discovery() {
   const [filters, setFilters] = useState({ type: "all", onlineOnly: false, verifiedOnly: false, minAge: 18, maxAge: 45, distanceKm: "all", interest: "" });
 
   const profiles = useMemo(() => {
-    const adminSource = Array.isArray(remote) ? remote.filter((item) => item.showInDiscovery !== false) : [];
-    const source = remote === null ? sampleProfiles : adminSource;
+    const source = remoteProfiles.filter((item) => item.showInDiscovery !== false);
     const filtered = source.filter((item) => {
       const age = Number(item.age || 0);
       const matchesType = filters.type === "all" || item.type === filters.type;
@@ -37,16 +52,12 @@ export default function Discovery() {
       const matchesDistance = filters.distanceKm === "all" || !Number.isFinite(itemDistance) || itemDistance <= Number(filters.distanceKm);
       return matchesType && matchesOnline && matchesVerified && matchesAge && matchesDistance && matchesInterest;
     });
-    return filtered.length || remote !== null ? filtered : source;
-  }, [remote, filters, myProfile]);
+    return filtered.length || !source.length ? filtered : source;
+  }, [remoteProfiles, filters, myProfile]);
   const visibleProfiles = useMemo(() => {
     const available = profiles.filter((item) => !dismissedIds.includes(item.id));
     return available.length ? available : profiles;
   }, [dismissedIds, profiles]);
-
-  useEffect(() => {
-    return listenPublicProfiles(setRemote);
-  }, []);
 
   useEffect(() => {
     setDismissedIds([]);
@@ -132,16 +143,24 @@ export default function Discovery() {
       </header>
 
       <div className="space-y-5">
-        {remote !== null && !visibleProfiles.length && (
+        {isInitialLoading && (
+          <DiscoverySkeleton />
+        )}
+        {!isInitialLoading && !visibleProfiles.length && (
           <div className="rounded-[28px] bg-zinc-50 px-5 py-10 text-center">
             <h2 className="text-xl font-black">No profiles available</h2>
-            <p className="mt-2 text-sm font-semibold text-zinc-500">Admin panel se partner profile add karo, phir yahan automatically show hogi.</p>
+            <p className="mt-2 text-sm font-semibold text-zinc-500">
+              {error ? (isOffline ? "Offline hai. Cached profiles milte hi yahan show honge." : "Backend wake ho raha hai. Profiles automatically retry ho rahi hain.") : "Admin panel se partner profile add karo, phir yahan automatically show hogi."}
+            </p>
           </div>
+        )}
+        {isRefreshing && visibleProfiles.length > 0 && (
+          <p className="rounded-full bg-zinc-50 px-4 py-2 text-center text-xs font-black text-zinc-500">Refreshing profiles...</p>
         )}
         {visibleProfiles.map((item, cardIndex) => {
           const media = getMedia(item);
           const photoIndex = photoIndexes[item.id] || 0;
-          const visibleMedia = media[photoIndex % media.length] || { type: "image", url: sampleProfiles[0].photos[0] };
+          const visibleMedia = media[photoIndex % media.length] || null;
           return (
             <motion.article
               key={item.id}
@@ -156,7 +175,7 @@ export default function Discovery() {
             >
               <div className="relative h-[min(82vw,410px)] min-h-[318px] overflow-hidden bg-zinc-100">
                 <AnimatePresence mode="wait">
-                  {visibleMedia.type === "video" ? (
+                  {visibleMedia?.type === "video" ? (
                     <motion.video
                       key={visibleMedia.url}
                       src={visibleMedia.url}
@@ -170,7 +189,7 @@ export default function Discovery() {
                       transition={{ duration: 0.35 }}
                       className="absolute inset-0 h-full w-full object-cover"
                     />
-                  ) : (
+                  ) : visibleMedia ? (
                     <motion.img
                       key={visibleMedia.url}
                       src={visibleMedia.url}
@@ -180,6 +199,14 @@ export default function Discovery() {
                       exit={{ opacity: 0, scale: 0.98 }}
                       transition={{ duration: 0.35 }}
                       className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <motion.div
+                      key="empty-media"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-gradient-to-br from-zinc-200 to-zinc-100"
                     />
                   )}
                 </AnimatePresence>

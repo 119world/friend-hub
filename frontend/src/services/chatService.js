@@ -1,5 +1,3 @@
-import { localConversation } from "../utils/sampleData";
-
 const useFirestore = import.meta.env.VITE_USE_FIRESTORE === "true";
 
 async function loadFirestore() {
@@ -92,7 +90,7 @@ export async function openChat({ user, target }) {
 export function listenMessages(chatId, cb) {
   if (chatId.startsWith("local_") || !useFirestore) {
     const chats = readLocalChats();
-    cb(chats[chatId]?.messages || localConversation);
+    cb(chats[chatId]?.messages || []);
     return () => {};
   }
 
@@ -102,7 +100,7 @@ export function listenMessages(chatId, cb) {
     if (closed) return;
     const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"), limit(80));
     unsub = onSnapshot(q, (snap) => cb(snap.docs.map((item) => ({ id: item.id, ...item.data() }))));
-  }).catch(() => cb(localConversation));
+  }).catch(() => cb([]));
 
   return () => {
     closed = true;

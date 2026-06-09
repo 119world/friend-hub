@@ -1,29 +1,26 @@
 import { Heart, MapPin } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PhoneStatusBar from "../components/PhoneStatusBar";
 import { useAuth } from "../hooks/useAuth";
-import { listenPublicProfiles } from "../services/appConfig";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 import { openChat } from "../services/chatService";
-import { sampleProfiles } from "../utils/sampleData";
 
 function AvatarMedia({ item, className = "" }) {
   const photo = item.photos?.[0] || item.photo;
   const video = !photo ? item.videos?.[0] : "";
   if (video) return <video src={video} muted loop playsInline autoPlay className={`object-cover ${className}`} />;
-  return <img src={photo || sampleProfiles[0].photos[0]} className={`object-cover ${className}`} />;
+  return photo ? <img src={photo} className={`object-cover ${className}`} /> : <div className={`skeleton ${className}`} />;
 }
 
 export default function Likes() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [profiles, setProfiles] = useState([]);
-
-  useEffect(() => listenPublicProfiles(setProfiles), []);
+  const { profiles, isInitialLoading, error, isOffline } = usePublicProfiles();
 
   const likedProfiles = useMemo(() => {
     const source = profiles.filter((item) => item.showInDiscovery !== false);
-    return (source.length ? source : sampleProfiles).slice(0, 12);
+    return source.slice(0, 12);
   }, [profiles]);
 
   async function openLikedProfile(target) {
@@ -40,6 +37,13 @@ export default function Likes() {
       </header>
 
       <section className="grid grid-cols-2 gap-4 pb-6">
+        {isInitialLoading && [0, 1, 2, 3].map((item) => (
+          <div key={item} className="rounded-[24px] border border-zinc-100 bg-white p-3 shadow-sm">
+            <div className="skeleton h-40 w-full rounded-[18px]" />
+            <div className="skeleton mt-3 h-5 w-2/3 rounded-full" />
+            <div className="skeleton mt-2 h-4 w-1/2 rounded-full" />
+          </div>
+        ))}
         {likedProfiles.map((item) => (
           <button
             key={item.id}
@@ -58,6 +62,12 @@ export default function Likes() {
             </p>
           </button>
         ))}
+        {!isInitialLoading && !likedProfiles.length && (
+          <div className="col-span-2 rounded-3xl bg-zinc-50 px-5 py-8 text-center">
+            <p className="text-base font-black text-zinc-700">No profiles yet</p>
+            <p className="mt-1 text-sm font-semibold text-zinc-500">{error ? (isOffline ? "Offline hai. Cached profiles available honge to yahan show honge." : "Profiles retry ho raha hai.") : "Partner profiles add hone ke baad yahan likes show honge."}</p>
+          </div>
+        )}
       </section>
     </section>
   );

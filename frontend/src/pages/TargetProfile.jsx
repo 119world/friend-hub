@@ -1,37 +1,35 @@
 import { ArrowLeft, Briefcase, Check, Heart, Lock, MapPin, MessageCircle, Phone, Play, Video } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { listenPublicProfiles } from "../services/appConfig";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 import { openChat } from "../services/chatService";
-import { sampleProfiles } from "../utils/sampleData";
 
 export default function TargetProfile() {
   const { targetId } = useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
   const { user, profile: myProfile } = useAuth();
-  const [profiles, setProfiles] = useState([]);
+  const { profiles, isInitialLoading, error } = usePublicProfiles();
   const hasPremium = Number(myProfile?.diamonds || 0) > 0 || myProfile?.premium === true;
-
-  useEffect(() => listenPublicProfiles(setProfiles), []);
 
   const target = useMemo(() => {
     return state?.profile ||
       profiles.find((item) => item.id === targetId) ||
-      sampleProfiles.find((item) => item.id === targetId) ||
-      sampleProfiles[0];
+      null;
   }, [profiles, state?.profile, targetId]);
 
-  const photos = target.photos?.length ? target.photos.slice(0, 7) : [sampleProfiles[0].photos[0]];
-  const videos = target.videos?.length ? target.videos.slice(0, 3) : [];
+  const photos = target?.photos?.length ? target.photos.slice(0, 7) : [];
+  const videos = target?.videos?.length ? target.videos.slice(0, 3) : [];
 
   async function startChat() {
+    if (!target) return;
     const chatId = await openChat({ user, target });
     navigate(`/chat/${chatId}`);
   }
 
   function startCall(mode) {
+    if (!target) return;
     if (!hasPremium) {
       navigate("/recharge", { state: { reason: `Recharge diamonds to start a ${mode} call with ${target.name}.` } });
       return;
@@ -47,8 +45,28 @@ export default function TargetProfile() {
         <span />
       </header>
 
+      {!target && isInitialLoading && (
+        <>
+          <div className="skeleton h-[390px] rounded-[28px]" />
+          <div className="mt-6 space-y-4">
+            <div className="skeleton h-7 w-2/3 rounded-full" />
+            <div className="skeleton h-5 w-full rounded-full" />
+            <div className="skeleton h-5 w-5/6 rounded-full" />
+          </div>
+        </>
+      )}
+
+      {!target && !isInitialLoading && (
+        <div className="rounded-[28px] bg-zinc-50 px-5 py-10 text-center">
+          <h2 className="text-xl font-black">Profile unavailable</h2>
+          <p className="mt-2 text-sm font-semibold text-zinc-500">{error || "This profile is not available right now."}</p>
+        </div>
+      )}
+
+      {target && (
+        <>
       <div className="relative h-[390px] overflow-hidden rounded-[28px] bg-zinc-100">
-        <img src={photos[0]} alt={target.name} className="h-full w-full object-cover" />
+        {photos[0] ? <img src={photos[0]} alt={target.name} className="h-full w-full object-cover" /> : <div className="skeleton h-full w-full" />}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/78 via-black/20 to-transparent p-5 text-white">
           <div className="flex items-center gap-2">
             <h2 className="text-[34px] font-black leading-none">{target.name}, {target.age}</h2>
@@ -107,6 +125,8 @@ export default function TargetProfile() {
         <button onClick={() => navigate("/recharge")} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#fff0f5] py-4 font-black text-[#f72565]">
           <Heart size={18} fill="currentColor" /> Unlock videos and calls
         </button>
+      )}
+        </>
       )}
     </section>
   );

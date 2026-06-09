@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { BadgeCheck, Heart, MessageCircle, Sparkles, UsersRound, Wallet } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { listenPublicProfiles } from "../services/appConfig";
-import { sampleProfiles } from "../utils/sampleData";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 
 function Brand() {
   return (
@@ -15,13 +14,10 @@ function Brand() {
 
 export default function Home() {
   const { profile } = useAuth();
-  const [remoteProfiles, setRemoteProfiles] = useState([]);
-
-  useEffect(() => listenPublicProfiles(setRemoteProfiles), []);
+  const { profiles: remoteProfiles, isInitialLoading } = usePublicProfiles();
 
   const profiles = useMemo(() => {
-    const source = remoteProfiles.length ? remoteProfiles : sampleProfiles;
-    return source.filter((item) => item.active !== false && item.showInDiscovery !== false).slice(0, 6);
+    return remoteProfiles.filter((item) => item.active !== false && item.showInDiscovery !== false).slice(0, 6);
   }, [remoteProfiles]);
 
   return (
@@ -63,11 +59,22 @@ export default function Home() {
           <Link to="/discovery" className="shrink-0 rounded-full bg-[#fff0f6] px-3 py-2 text-xs font-black text-[#f72565]">View all</Link>
         </div>
         <div className="grid gap-3">
+          {isInitialLoading && [0, 1, 2].map((item) => (
+            <div key={item} className="flex min-w-0 items-center gap-3 rounded-[22px] bg-white p-3 shadow-soft">
+              <div className="skeleton h-16 w-16 shrink-0 rounded-2xl" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="skeleton h-4 w-1/2 rounded-full" />
+                <div className="skeleton h-3 w-4/5 rounded-full" />
+                <div className="skeleton h-3 w-3/5 rounded-full" />
+              </div>
+              <div className="skeleton h-10 w-10 shrink-0 rounded-full" />
+            </div>
+          ))}
           {profiles.map((item) => {
-            const photo = item.photos?.[0] || item.galleryPhotos?.[0] || sampleProfiles[0].photos[0];
+            const photo = item.photos?.[0] || item.galleryPhotos?.[0] || "";
             return (
               <Link key={item.id} to={`/people/${item.id}`} state={{ profile: item }} className="flex min-w-0 items-center gap-3 rounded-[22px] bg-white p-3 shadow-soft">
-                <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" />
+                {photo ? <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" /> : <div className="skeleton h-16 w-16 shrink-0 rounded-2xl" />}
                 <div className="min-w-0 flex-1">
                   <p className="flex min-w-0 items-center gap-1 text-base font-black">
                     <span className="truncate">{item.name || "Friend Hub Partner"}, {item.age || 24}</span>
@@ -82,6 +89,11 @@ export default function Home() {
               </Link>
             );
           })}
+          {!isInitialLoading && !profiles.length && (
+            <div className="rounded-[22px] bg-white p-5 text-center shadow-soft">
+              <p className="text-sm font-black text-zinc-700">Profiles are loading in the background.</p>
+            </div>
+          )}
         </div>
       </section>
 

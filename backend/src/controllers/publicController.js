@@ -29,8 +29,6 @@ const defaultReplyConfig = {
   delayMs: 650
 };
 
-const defaultPartnerPhoto = "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=85";
-
 function clean(value) {
   return String(value || "").trim();
 }
@@ -91,8 +89,8 @@ function profileFromAccount(account) {
     profession: clean(account.profession || "Friend Hub Partner"),
     bio: clean(account.bio || "Friendly profile on Friend Hub."),
     interests: Array.isArray(account.interests) && account.interests.length ? account.interests : ["Chatting"],
-    photos: Array.isArray(account.photos) && account.photos.length ? account.photos : [defaultPartnerPhoto],
-    galleryPhotos: Array.isArray(account.galleryPhotos) && account.galleryPhotos.length ? account.galleryPhotos : [defaultPartnerPhoto],
+    photos: Array.isArray(account.photos) && account.photos.length ? account.photos : [],
+    galleryPhotos: Array.isArray(account.galleryPhotos) && account.galleryPhotos.length ? account.galleryPhotos : [],
     videos: Array.isArray(account.videos) ? account.videos : [],
     welcomeMessage: clean(account.welcomeMessage || "Hey! Thanks for connecting."),
     online: account.online !== false,
@@ -105,16 +103,23 @@ function profileFromAccount(account) {
 }
 
 export async function publicProfiles(req, res) {
-  const partners = (await listCollection("partners", { activeOnly: true }))
+  const [partnerItems, partnerAccounts, botItems] = await Promise.all([
+    listCollection("partners", { activeOnly: true }),
+    listPartnerAccounts(),
+    listCollection("aiBots", { activeOnly: true })
+  ]);
+
+  const partners = partnerItems
     .filter((item) => item.active !== false)
     .map((item) => normalizeProfile(item.id, "partner", item));
   const knownPartnerIds = new Set(partners.map((item) => clean(item.id || item.partnerId)));
-  const accountProfiles = (await listPartnerAccounts())
+  const accountProfiles = partnerAccounts
     .map(profileFromAccount)
     .filter((item) => item.active !== false && item.showInDiscovery !== false && !knownPartnerIds.has(clean(item.id)));
-  const bots = (await listCollection("aiBots", { activeOnly: true }))
+  const bots = botItems
     .filter((item) => item.active !== false)
     .map((item) => normalizeProfile(item.id, "bot", item));
+  res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
   res.json({ items: [...accountProfiles, ...partners, ...bots] });
 }
 

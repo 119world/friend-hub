@@ -1,6 +1,10 @@
 import api from "./api";
 
 const POLL_MS = 5000;
+const PROFILE_CACHE_KEY = "friendHubPublicProfiles:v2";
+const PROFILE_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const PROFILE_REFRESH_MS = 8 * 60 * 1000;
+const PROFILE_RETRY_DELAYS_MS = [0, 1200, 2400, 4800, 9000, 15000, 30000];
 
 export const defaultPlans = [
   { id: "first_9", title: "First-time Offer", originalPrice: 19, price: 9, diamonds: 30, minutes: 1, active: true, subscription: false, autoPay: true, autoPayAmount: 9 },
@@ -48,6 +52,48 @@ async function apiFallback(path, fallback) {
   }
 }
 
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function readProfileCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY) || "null");
+    if (!cached || !Array.isArray(cached.profiles)) return { profiles: [], updatedAt: 0 };
+    if (Date.now() - Number(cached.updatedAt || 0) > PROFILE_CACHE_MAX_AGE_MS) {
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+      return { profiles: [], updatedAt: 0 };
+    }
+    return {
+      profiles: cached.profiles.map((item) => normalizeProfile(item.id, item.type, item)).filter((item) => item.active !== false),
+      updatedAt: Number(cached.updatedAt || 0)
+    };
+  } catch {
+    return { profiles: [], updatedAt: 0 };
+  }
+}
+
+function writeProfileCache(profiles) {
+  try {
+    const payload = { updatedAt: Date.now(), profiles };
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(payload));
+  } catch {}
+}
+
+function preloadProfileImages(profiles) {
+  const urls = profiles.flatMap((item) => [
+    ...(Array.isArray(item.photos) ? item.photos : []),
+    ...(Array.isArray(item.galleryPhotos) ? item.galleryPhotos : [])
+  ]).filter(Boolean).slice(0, 80);
+
+  urls.forEach((url) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.loading = "eager";
+    img.src = url;
+  });
+}
+
 function startPolling(load) {
   load();
   const timer = window.setInterval(load, POLL_MS);
@@ -80,6 +126,114 @@ function normalizeProfile(id, type, data) {
     showInDiscovery: data.showInDiscovery !== false,
     showInMatches: data.showInMatches !== false,
     allowAutoContact: data.allowAutoContact !== false
+  };
+}
+
+const cachedProfiles = readProfileCache();
+const profileSubscribers = new Set();
+let profileResourceStarted = false;
+let profileRefreshTimer = null;
+let profileFetchInFlight = null;
+let stopProfileResource = null;
+
+let profileState = {
+  profiles: cachedProfiles.profiles,
+  status: cachedProfiles.profiles.length ? "ready" : "loading",
+  error: "",
+  source: cachedProfiles.profiles.length ? "cache" : "network",
+  updatedAt: cachedProfiles.updatedAt,
+  isOffline: typeof navigator !== "undefined" ? !navigator.onLine : false,
+  isRefreshing: false
+};
+
+function emitProfileState(patch = {}) {
+  profileState = { ...profileState, ...patch };
+  profileSubscribers.forEach((cb) => cb(profileState));
+}
+
+function publishProfiles(items, source) {
+  const profiles = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeProfile(item.id, item.type, item))
+    .filter((item) => item.active !== false);
+  const updatedAt = Date.now();
+  writeProfileCache(profiles);
+  preloadProfileImages(profiles);
+  emitProfileState({
+    profiles,
+    status: "ready",
+    error: "",
+    source,
+    updatedAt,
+    isRefreshing: false,
+    isOffline: typeof navigator !== "undefined" ? !navigator.onLine : false
+  });
+  return profiles;
+}
+
+async function fetchPublicProfilesWithRetry() {
+  if (profileFetchInFlight) return profileFetchInFlight;
+
+  profileFetchInFlight = (async () => {
+    let lastError = null;
+    emitProfileState({ isRefreshing: true });
+
+    for (const delay of PROFILE_RETRY_DELAYS_MS) {
+      if (delay) await wait(delay);
+      try {
+        const separator = "/public/profiles".includes("?") ? "&" : "?";
+        const { data } = await api.get(`/public/profiles${separator}_=${Date.now()}`, { timeout: 22000 });
+        return publishProfiles(data.items || [], "api");
+      } catch (err) {
+        lastError = err;
+        if (typeof navigator !== "undefined" && !navigator.onLine) break;
+      }
+    }
+
+    emitProfileState({
+      status: profileState.profiles.length ? "ready" : "error",
+      error: lastError?.response?.data?.message || lastError?.message || "Profiles are temporarily unavailable.",
+      isRefreshing: false,
+      isOffline: typeof navigator !== "undefined" ? !navigator.onLine : false
+    });
+    return profileState.profiles;
+  })().finally(() => {
+    profileFetchInFlight = null;
+  });
+
+  return profileFetchInFlight;
+}
+
+function refreshProfilesIfStale() {
+  const stale = Date.now() - Number(profileState.updatedAt || 0) > PROFILE_REFRESH_MS;
+  if (stale || !profileState.profiles.length) fetchPublicProfilesWithRetry();
+}
+
+function startProfileApiRefresh() {
+  fetchPublicProfilesWithRetry();
+  profileRefreshTimer = window.setInterval(refreshProfilesIfStale, PROFILE_REFRESH_MS);
+
+  const refreshOnVisible = () => {
+    if (!document.hidden) refreshProfilesIfStale();
+  };
+  const setOnline = () => {
+    emitProfileState({ isOffline: false });
+    fetchPublicProfilesWithRetry();
+  };
+  const setOffline = () => emitProfileState({ isOffline: true });
+
+  window.addEventListener("focus", refreshProfilesIfStale);
+  window.addEventListener("pageshow", refreshProfilesIfStale);
+  window.addEventListener("online", setOnline);
+  window.addEventListener("offline", setOffline);
+  document.addEventListener("visibilitychange", refreshOnVisible);
+
+  return () => {
+    window.clearInterval(profileRefreshTimer);
+    window.removeEventListener("focus", refreshProfilesIfStale);
+    window.removeEventListener("pageshow", refreshProfilesIfStale);
+    window.removeEventListener("online", setOnline);
+    window.removeEventListener("offline", setOffline);
+    document.removeEventListener("visibilitychange", refreshOnVisible);
   };
 }
 
@@ -157,47 +311,66 @@ export function listenReplyConfig(cb) {
   };
 }
 
-export function listenPublicProfiles(cb) {
-  if (!useFirestore) {
-    let live = true;
-    const load = () => apiFallback("/public/profiles", []).then((items) => live && cb(items.map((item) => normalizeProfile(item.id, item.type, item))));
-    const stopPolling = startPolling(load);
-    return () => {
-      live = false;
-      stopPolling();
+export function listenPublicProfilesState(cb) {
+  cb(profileState);
+  profileSubscribers.add(cb);
+
+  if (!profileResourceStarted) {
+    profileResourceStarted = true;
+    let stopApiRefresh = startProfileApiRefresh();
+    let unsubPartners = () => {};
+    let unsubBots = () => {};
+    let closed = false;
+
+    if (useFirestore) {
+      const values = { partners: [], bots: [] };
+      const ready = { partners: false, bots: false };
+      const emitRealtime = () => {
+        if (!ready.partners || !ready.bots) return;
+        publishProfiles([...values.partners, ...values.bots], "firestore");
+      };
+
+      loadFirestore().then(({ collection, onSnapshot, query, where, db }) => {
+        if (closed) return;
+        const partnerQ = query(collection(db, "partners"), where("active", "==", true));
+        const botQ = query(collection(db, "aiBots"), where("active", "==", true));
+
+        unsubPartners = onSnapshot(partnerQ, (snap) => {
+          ready.partners = true;
+          values.partners = snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data()));
+          emitRealtime();
+        }, () => fetchPublicProfilesWithRetry());
+
+        unsubBots = onSnapshot(botQ, (snap) => {
+          ready.bots = true;
+          values.bots = snap.docs.map((item) => normalizeProfile(item.id, "bot", item.data()));
+          emitRealtime();
+        }, () => fetchPublicProfilesWithRetry());
+      }).catch(() => fetchPublicProfilesWithRetry());
+    }
+
+    stopProfileResource = () => {
+      closed = true;
+      stopApiRefresh?.();
+      unsubPartners();
+      unsubBots();
     };
   }
-  const values = { partners: [], bots: [] };
-  const emit = () => cb([...values.partners, ...values.bots].filter((item) => item.active !== false));
-  let unsubPartners = () => {};
-  let unsubBots = () => {};
-  let closed = false;
-  loadFirestore().then(({ collection, onSnapshot, query, where, db }) => {
-    if (closed) return;
-    const partnerQ = query(collection(db, "partners"), where("active", "==", true));
-    const botQ = query(collection(db, "aiBots"), where("active", "==", true));
-    unsubPartners = onSnapshot(partnerQ, (snap) => {
-      values.partners = snap.docs.map((item) => normalizeProfile(item.id, "partner", item.data()));
-      emit();
-    }, () => {
-      apiFallback("/public/profiles", []).then((items) => {
-        values.partners = items.filter((item) => item.type === "partner").map((item) => normalizeProfile(item.id, "partner", item));
-        emit();
-      });
-    });
-    unsubBots = onSnapshot(botQ, (snap) => {
-      values.bots = snap.docs.map((item) => normalizeProfile(item.id, "bot", item.data()));
-      emit();
-    }, () => {
-      apiFallback("/public/profiles", []).then((items) => {
-        values.bots = items.filter((item) => item.type === "bot").map((item) => normalizeProfile(item.id, "bot", item));
-        emit();
-      });
-    });
-  }).catch(() => apiFallback("/public/profiles", []).then((items) => cb(items.map((item) => normalizeProfile(item.id, item.type, item)))));
+
   return () => {
-    closed = true;
-    unsubPartners();
-    unsubBots();
+    profileSubscribers.delete(cb);
+    if (!profileSubscribers.size && stopProfileResource) {
+      stopProfileResource();
+      stopProfileResource = null;
+      profileResourceStarted = false;
+    }
   };
+}
+
+export function getPublicProfilesState() {
+  return profileState;
+}
+
+export function listenPublicProfiles(cb) {
+  return listenPublicProfilesState((state) => cb(state.profiles));
 }

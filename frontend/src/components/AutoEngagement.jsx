@@ -3,9 +3,8 @@ import { MessageCircle, Phone, Video, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { listenPublicProfiles } from "../services/appConfig";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 import { openChat } from "../services/chatService";
-import { sampleProfiles } from "../utils/sampleData";
 import CallOverlay from "./CallOverlay";
 
 const prompts = [
@@ -20,17 +19,15 @@ export default function AutoEngagement() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [profiles, setProfiles] = useState([]);
+  const { profiles } = usePublicProfiles();
   const [prompt, setPrompt] = useState(null);
   const [callMode, setCallMode] = useState(null);
   const diamonds = Number(profile?.diamonds || 0);
   const [snoozeUntil, setSnoozeUntil] = useState(() => Number(localStorage.getItem("friendHubPromptSnoozeUntil") || 0));
 
-  useEffect(() => listenPublicProfiles(setProfiles), []);
-
   const candidates = useMemo(() => {
     const adminProfiles = profiles.filter((item) => item.allowAutoContact !== false && item.showInMatches !== false);
-    return adminProfiles.length ? adminProfiles : sampleProfiles;
+    return adminProfiles;
   }, [profiles]);
 
   useEffect(() => {
@@ -38,6 +35,7 @@ export default function AutoEngagement() {
     if (
       !user ||
       diamonds > 0 ||
+      !candidates.length ||
       blockedPaths.some((path) => location.pathname.startsWith(path)) ||
       now < snoozeUntil
     ) {
@@ -48,7 +46,8 @@ export default function AutoEngagement() {
     const timer = window.setInterval(() => {
       setPrompt((current) => {
         if (current) return current;
-        const target = candidates[Math.floor(Math.random() * candidates.length)] || sampleProfiles[0];
+        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        if (!target) return null;
         const mode = Math.random() > 0.45 ? "message" : (Math.random() > 0.5 ? "audio" : "video");
         return {
           id: `${target.id}_${Date.now()}`,
@@ -114,7 +113,11 @@ export default function AutoEngagement() {
               className="pointer-events-auto relative w-full max-w-[400px] rounded-[24px] bg-white p-3 shadow-[0_22px_60px_rgba(0,0,0,.22)] ring-1 ring-black/5"
             >
               <button onClick={openPromptTarget} className="flex w-full items-center gap-3 rounded-[18px] p-1 text-left active:bg-zinc-50">
-                <img src={prompt.target.photos?.[0] || sampleProfiles[0].photos[0]} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                {prompt.target.photos?.[0] ? (
+                  <img src={prompt.target.photos[0]} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="skeleton h-14 w-14 shrink-0 rounded-full" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-base font-black">{prompt.target.name}</p>
                   <p className="line-clamp-2 text-sm font-semibold leading-5 text-zinc-500">
@@ -141,7 +144,7 @@ export default function AutoEngagement() {
       <CallOverlay
         open={Boolean(callMode && prompt)}
         mode={callMode || "audio"}
-        contact={{ name: prompt?.target?.name || "Friend", photo: prompt?.target?.photos?.[0] || sampleProfiles[0].photos[0] }}
+        contact={{ name: prompt?.target?.name || "Friend", photo: prompt?.target?.photos?.[0] || "" }}
         onClose={closeCall}
       />
     </>

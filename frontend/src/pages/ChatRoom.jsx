@@ -6,15 +6,16 @@ import CallOverlay from "../components/CallOverlay";
 import PhoneStatusBar from "../components/PhoneStatusBar";
 import { db } from "../firebase/firebase";
 import { useAuth } from "../hooks/useAuth";
+import { usePublicProfiles } from "../hooks/usePublicProfiles";
 import { defaultReplyConfig, listenReplyConfig } from "../services/appConfig";
 import { appendLocalBotReply, getLocalChat, listenChatMeta, listenMessages, markMessagesSeen, sendMessage, setTypingStatus } from "../services/chatService";
 import { uploadChatAttachment, validateMediaFile } from "../services/mediaService";
-import { localConversation, sampleProfiles, sampleThreads } from "../utils/sampleData";
 
 export default function ChatRoom() {
   const { chatId } = useParams();
   const location = useLocation();
   const { user, profile } = useAuth();
+  const { profiles } = usePublicProfiles();
   const navigate = useNavigate();
   const [chat, setChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -39,23 +40,22 @@ export default function ChatRoom() {
     if (isLocal) {
       const saved = getLocalChat(chatId);
       const profileId = chatId.replace("local_", "");
-      const sample = sampleProfiles.find((item) => item.id === profileId) || sampleProfiles[1];
-      const thread = sampleThreads.find((item) => item.id === chatId);
+      const target = profiles.find((item) => item.id === profileId);
       setChat(saved || {
         id: chatId,
-        targetId: sample.id,
-        targetType: sample.type,
-        targetName: thread?.name || sample.name,
-        targetPhoto: thread?.photo || sample.photos[0],
-        targetOnline: sample.online !== false,
+        targetId: target?.id || profileId,
+        targetType: target?.type || "partner",
+        targetName: target?.name || "Friend",
+        targetPhoto: target?.photos?.[0] || "",
+        targetOnline: target?.online !== false,
         botRepliesUsed: 0
       });
-      setMessages(saved?.messages || localConversation);
+      setMessages(saved?.messages || []);
       return undefined;
     }
     getDoc(doc(db, "chats", chatId)).then((snap) => snap.exists() && setChat({ id: snap.id, ...snap.data() }));
     return listenMessages(chatId, setMessages);
-  }, [chatId, isLocal]);
+  }, [chatId, isLocal, profiles]);
 
   useEffect(() => {
     if (isLocal) return undefined;
@@ -75,8 +75,8 @@ export default function ChatRoom() {
     markMessagesSeen(chatId, user?.uid, messages).catch(() => {});
   }, [chatId, messages, user?.uid]);
 
-  const title = useMemo(() => chat?.targetName || "Ananya", [chat]);
-  const photo = chat?.targetPhoto || sampleProfiles[1].photos[0];
+  const title = useMemo(() => chat?.targetName || "Friend", [chat]);
+  const photo = chat?.targetPhoto || "";
   const peerTyping = meta?.typing
     ? Object.entries(meta.typing).some(([uid, value]) => uid !== user.uid && value && Date.now() - Number(value) < 6000)
     : false;
@@ -225,7 +225,7 @@ export default function ChatRoom() {
       <header className="flex items-center gap-3 border-b border-zinc-100 px-5 pb-5 pt-7">
         <button onClick={() => navigate(-1)} className="text-black"><ArrowLeft size={32} /></button>
         <div className="relative h-16 w-16 shrink-0">
-          <img src={photo} alt="" className="h-16 w-16 rounded-full object-cover" />
+          {photo ? <img src={photo} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="skeleton h-16 w-16 rounded-full" />}
           <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
         </div>
         <div className="min-w-0 flex-1">
@@ -250,7 +250,7 @@ export default function ChatRoom() {
             const mine = message.senderType === "user" || message.senderId === user.uid;
             return (
               <div key={message.id} className={`flex items-end gap-3 ${mine ? "justify-end" : "justify-start"}`}>
-                {!mine && <img src={photo} alt="" className="h-12 w-12 rounded-full object-cover" />}
+                {!mine && (photo ? <img src={photo} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="skeleton h-12 w-12 rounded-full" />)}
                 <div className={`max-w-[72%] ${mine ? "text-right" : "text-left"}`}>
                   <div className={`rounded-[22px] px-5 py-4 text-lg leading-7 ${mine ? "pink-gradient text-white" : "bg-zinc-100 text-zinc-950"}`}>
                     {renderMessage(message)}
@@ -265,7 +265,7 @@ export default function ChatRoom() {
           })}
           {(peerTyping || botTyping) && (
             <div className="flex items-end gap-3">
-              <img src={photo} alt="" className="h-12 w-12 rounded-full object-cover" />
+              {photo ? <img src={photo} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="skeleton h-12 w-12 rounded-full" />}
               <div className="rounded-[22px] bg-zinc-100 px-5 py-4 text-zinc-500">typing...</div>
             </div>
           )}
