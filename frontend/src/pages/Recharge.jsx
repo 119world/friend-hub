@@ -30,6 +30,17 @@ const PLAN_DISPLAY = {
   premium_99: { title: "Premium", originalPrice: 399, price: 99, savePercent: 75, badge: "" }
 };
 
+const UPI_PAYMENT_LINKS = {
+  first_9: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=9.00&cu=INR",
+  normal_19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
+  offer_49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
+  premium_99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR",
+  9: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=9.00&cu=INR",
+  19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
+  49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
+  99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR"
+};
+
 const PAYMENT_METHODS = [
   { key: "UPI", label: "UPI", sub: "Pay using any UPI app", icon: QrCode, apiValue: "UPI" },
   { key: "Razorpay", label: "Razorpay", sub: "Fast and secure checkout", icon: ShieldCheck, apiValue: "Razorpay" },
@@ -102,6 +113,12 @@ export default function Recharge() {
     setManualPayment(null);
     setManualForm({ transactionId: "", note: "" });
     setPaymentStatus(null);
+    const paymentUrl = UPI_PAYMENT_LINKS[plan.id] || UPI_PAYMENT_LINKS[Number(plan.price || plan.amount || 0)];
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+      setBusy("");
+      return;
+    }
     try {
       const { data } = await api.post("/payments/create-order", {
         planId: plan.id,

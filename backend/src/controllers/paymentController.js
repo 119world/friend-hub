@@ -8,10 +8,10 @@ import { getLocalResource, listLocalResource, upsertLocalResource } from "../ser
 import { verifyRazorpaySignature } from "../utils/crypto.js";
 
 const PLAN_FALLBACK_LINKS = {
-  first_9: "https://rzp.io/rzp/goFzJpG",
-  normal_19: "https://rzp.io/rzp/z1PA4DZ8",
-  offer_49: "https://rzp.io/rzp/nmmc8s4L",
-  premium_99: "https://rzp.io/rzp/nHX3lxKQ"
+  first_9: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=9.00&cu=INR",
+  normal_19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
+  offer_49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
+  premium_99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR"
 };
 
 function publicAccount(account) {
@@ -22,9 +22,9 @@ function publicAccount(account) {
 
 function fallbackPaymentUrlFor(planId, account) {
   return (
+    PLAN_FALLBACK_LINKS[planId] ||
     account?.fallbackPaymentUrl ||
     account?.paymentLinkUrl ||
-    PLAN_FALLBACK_LINKS[planId] ||
     env.razorpay.fallbackPaymentUrl ||
     ""
   );
