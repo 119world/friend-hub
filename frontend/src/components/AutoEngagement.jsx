@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, Phone, Video, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { usePublicProfiles } from "../hooks/usePublicProfiles";
@@ -14,6 +14,12 @@ const prompts = [
   "I sent you a message."
 ];
 const blockedPaths = ["/login", "/recharge", "/profile", "/partner"];
+const POPUP_MIN_MS = 5000;
+const POPUP_MAX_MS = 7000;
+
+function randomPopupDuration() {
+  return POPUP_MIN_MS + Math.floor(Math.random() * (POPUP_MAX_MS - POPUP_MIN_MS + 1));
+}
 
 export default function AutoEngagement() {
   const { user, profile } = useAuth();
@@ -22,6 +28,7 @@ export default function AutoEngagement() {
   const { profiles } = usePublicProfiles();
   const [prompt, setPrompt] = useState(null);
   const [callMode, setCallMode] = useState(null);
+  const popupTimer = useRef(null);
   const diamonds = Number(profile?.diamonds || 0);
   const [snoozeUntil, setSnoozeUntil] = useState(() => Number(localStorage.getItem("friendHubPromptSnoozeUntil") || 0));
 
@@ -60,8 +67,18 @@ export default function AutoEngagement() {
     return () => window.clearInterval(timer);
   }, [candidates, diamonds, location.pathname, snoozeUntil, user]);
 
+  useEffect(() => {
+    window.clearTimeout(popupTimer.current);
+    if (!prompt || callMode) return undefined;
+    popupTimer.current = window.setTimeout(() => {
+      setPrompt(null);
+    }, randomPopupDuration());
+    return () => window.clearTimeout(popupTimer.current);
+  }, [callMode, prompt]);
+
   async function acceptPrompt() {
     if (!prompt) return;
+    window.clearTimeout(popupTimer.current);
     if (prompt.mode === "message") {
       const chatId = await openChat({ user, target: prompt.target });
       setPrompt(null);
@@ -74,6 +91,7 @@ export default function AutoEngagement() {
 
   async function openPromptTarget() {
     if (!prompt) return;
+    window.clearTimeout(popupTimer.current);
     if (prompt.mode === "message") {
       await acceptPrompt();
       return;
@@ -84,6 +102,7 @@ export default function AutoEngagement() {
   }
 
   function closeCall() {
+    window.clearTimeout(popupTimer.current);
     setCallMode(null);
     setPrompt(null);
     const until = Date.now() + 30 * 60 * 1000;
@@ -92,6 +111,7 @@ export default function AutoEngagement() {
   }
 
   function dismissPrompt() {
+    window.clearTimeout(popupTimer.current);
     const until = Date.now() + 30 * 60 * 1000;
     setPrompt(null);
     setSnoozeUntil(until);
@@ -110,11 +130,12 @@ export default function AutoEngagement() {
               initial={{ opacity: 0, y: 36, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 22, scale: 0.98 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
               className="pointer-events-auto relative w-full max-w-[400px] rounded-[24px] bg-white p-3 shadow-[0_22px_60px_rgba(0,0,0,.22)] ring-1 ring-black/5"
             >
               <button onClick={openPromptTarget} className="flex w-full items-center gap-3 rounded-[18px] p-1 text-left active:bg-zinc-50">
                 {prompt.target.photos?.[0] ? (
-                  <img src={prompt.target.photos[0]} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                  <img src={prompt.target.photos[0]} alt="" loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-full object-cover" />
                 ) : (
                   <div className="skeleton h-14 w-14 shrink-0 rounded-full" />
                 )}

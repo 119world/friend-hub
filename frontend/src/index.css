@@ -77,6 +77,43 @@ select {
   }
 }
 
+.typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 56px;
+  will-change: transform;
+}
+
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #9ca3af;
+  opacity: .45;
+  animation: typing-dot 1.05s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: .14s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: .28s;
+}
+
+@keyframes typing-dot {
+  0%, 80%, 100% {
+    transform: translateY(0);
+    opacity: .45;
+  }
+
+  40% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

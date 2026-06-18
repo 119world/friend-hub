@@ -138,12 +138,12 @@ export function getLocalChat(chatId) {
   return readLocalChats()[chatId] || null;
 }
 
-export function appendLocalBotReply(chatId, text) {
+export function appendLocalBotReply(chatId, text, senderType = "bot") {
   const chats = readLocalChats();
   chats[chatId] ||= { id: chatId, messages: [] };
   chats[chatId].messages.push({
     id: `bot_${Date.now()}`,
-    senderType: "bot",
+    senderType,
     text,
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   });

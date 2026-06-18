@@ -11,6 +11,23 @@ import { defaultReplyConfig, listenReplyConfig } from "../services/appConfig";
 import { appendLocalBotReply, getLocalChat, listenChatMeta, listenMessages, markMessagesSeen, sendMessage, setTypingStatus } from "../services/chatService";
 import { uploadChatAttachment, validateMediaFile } from "../services/mediaService";
 
+const AUTO_REPLY_MIN_MS = 1500;
+const AUTO_REPLY_MAX_MS = 2500;
+
+function randomAutoReplyDelay() {
+  return AUTO_REPLY_MIN_MS + Math.floor(Math.random() * (AUTO_REPLY_MAX_MS - AUTO_REPLY_MIN_MS + 1));
+}
+
+function TypingIndicator() {
+  return (
+    <div className="typing-bubble rounded-[22px] bg-zinc-100 px-5 py-4" aria-label="Partner is typing">
+      <span className="typing-dot" />
+      <span className="typing-dot" />
+      <span className="typing-dot" />
+    </div>
+  );
+}
+
 export default function ChatRoom() {
   const { chatId } = useParams();
   const location = useLocation();
@@ -30,9 +47,12 @@ export default function ChatRoom() {
   const [replyConfig, setReplyConfig] = useState(defaultReplyConfig);
   const bottomRef = useRef(null);
   const typingTimer = useRef(null);
+  const replyTimers = useRef(new Set());
+  const pendingAutoReplies = useRef(0);
 
   const isLocal = chatId.startsWith("local_");
   const isBot = chat?.targetType === "bot";
+  const shouldAutoReply = isLocal || chat?.targetType === "partner" || isBot;
   const hasDiamonds = (profile?.diamonds || 0) > 0;
   const freeUserMessages = useMemo(() => messages.filter((message) => message.senderType === "user" || message.senderId === user?.uid).length, [messages, user?.uid]);
 
@@ -65,14 +85,26 @@ export default function ChatRoom() {
   useEffect(() => listenReplyConfig(setReplyConfig), []);
 
   useEffect(() => {
+    return () => {
+      window.clearTimeout(typingTimer.current);
+      replyTimers.current.forEach((timer) => window.clearTimeout(timer));
+      replyTimers.current.clear();
+      pendingAutoReplies.current = 0;
+    };
+  }, []);
+
+  useEffect(() => {
     if (location.state?.callMode && hasDiamonds) {
       setNotice({ title: "Coming soon", body: "Audio and video calls are UI-ready. Live calling will be enabled soon." });
     }
   }, [hasDiamonds, location.state]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const frame = window.requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: messages.length > 1 ? "smooth" : "auto", block: "end" });
+    });
     markMessagesSeen(chatId, user?.uid, messages).catch(() => {});
+    return () => window.cancelAnimationFrame(frame);
   }, [chatId, messages, user?.uid]);
 
   const title = useMemo(() => chat?.targetName || "Friend", [chat]);
@@ -108,26 +140,39 @@ export default function ChatRoom() {
     const replyText = nextUsed === 1
       ? (chat?.firstReply || replyConfig.firstReply)
       : (chat?.secondReply || replyConfig.secondReply || replyConfig.rechargeMessage);
-    if (isLocal) {
-      const updated = appendLocalBotReply(chatId, replyText);
-      setMessages([...updated.messages]);
-      setChat((old) => ({ ...old, botRepliesUsed: updated.botRepliesUsed }));
-      setBotTyping(false);
-      if (updated.botRepliesUsed >= Number(chat?.freeReplyLimit || replyConfig.replyLimit || 2) && !hasDiamonds) setLocked(true);
-      return;
+    try {
+      if (isLocal) {
+        const updated = appendLocalBotReply(chatId, replyText, chat?.targetType || "partner");
+        setMessages([...updated.messages]);
+        setChat((old) => ({ ...old, botRepliesUsed: updated.botRepliesUsed }));
+        if (updated.botRepliesUsed >= Number(chat?.freeReplyLimit || replyConfig.replyLimit || 2) && !hasDiamonds) setLocked(true);
+        return;
+      }
+      await addDoc(collection(db, "chats", chatId, "messages"), {
+        senderId: chat.targetId,
+        senderType: chat?.targetType || "partner",
+        text: replyText,
+        type: "text",
+        readBy: [],
+        createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, "chats", chatId), { botRepliesUsed: nextUsed, updatedAt: serverTimestamp() });
+      setChat((old) => ({ ...old, botRepliesUsed: nextUsed }));
+      if (nextUsed >= Number(chat?.freeReplyLimit || replyConfig.replyLimit || 2) && !hasDiamonds) setLocked(true);
+    } finally {
+      pendingAutoReplies.current = Math.max(0, pendingAutoReplies.current - 1);
+      setBotTyping(pendingAutoReplies.current > 0);
     }
-    await addDoc(collection(db, "chats", chatId, "messages"), {
-      senderId: chat.targetId,
-      senderType: "bot",
-      text: replyText,
-      type: "text",
-      readBy: [],
-      createdAt: serverTimestamp()
-    });
-    await updateDoc(doc(db, "chats", chatId), { botRepliesUsed: nextUsed, updatedAt: serverTimestamp() });
-    setChat((old) => ({ ...old, botRepliesUsed: nextUsed }));
-    setBotTyping(false);
-    if (nextUsed >= Number(chat?.freeReplyLimit || replyConfig.replyLimit || 2) && !hasDiamonds) setLocked(true);
+  }
+
+  function scheduleAutoReply(nextUsed) {
+    pendingAutoReplies.current += 1;
+    setBotTyping(true);
+    const timer = window.setTimeout(() => {
+      replyTimers.current.delete(timer);
+      botReply(nextUsed);
+    }, randomAutoReplyDelay());
+    replyTimers.current.add(timer);
   }
 
   async function handleSend() {
@@ -139,14 +184,13 @@ export default function ChatRoom() {
     await setTypingStatus(chatId, user.uid, false).catch(() => {});
     const result = await sendMessage(chatId, { senderId: user.uid, senderType: "user", text: current, type: "text" });
     if (isLocal && result) setMessages([...result]);
-    if (isBot || isLocal) {
-      const used = chat?.botRepliesUsed || 0;
+    if (shouldAutoReply) {
+      const used = Number(chat?.botRepliesUsed || 0) + pendingAutoReplies.current;
       if (used >= Number(chat?.freeReplyLimit || replyConfig.replyLimit || 2) && !hasDiamonds) {
         setLocked(true);
         return;
       }
-      setBotTyping(true);
-      setTimeout(() => botReply(used + 1), Number(chat?.replyDelayMs || replyConfig.delayMs || 650));
+      scheduleAutoReply(used + 1);
     }
   }
 
@@ -208,7 +252,7 @@ export default function ChatRoom() {
 
   function renderMessage(message) {
     if (message.type === "image" && message.mediaUrl) {
-      return <img src={message.mediaUrl} alt={message.mediaName || "attachment"} className="max-h-64 rounded-2xl object-cover" />;
+      return <img src={message.mediaUrl} alt={message.mediaName || "attachment"} loading="lazy" decoding="async" className="max-h-64 rounded-2xl object-cover" />;
     }
     if (message.type === "video" && message.mediaUrl) {
       return <video src={message.mediaUrl} controls className="max-h-72 rounded-2xl" />;
@@ -225,12 +269,12 @@ export default function ChatRoom() {
       <header className="flex items-center gap-3 border-b border-zinc-100 px-5 pb-5 pt-7">
         <button onClick={() => navigate(-1)} className="text-black"><ArrowLeft size={32} /></button>
         <div className="relative h-16 w-16 shrink-0">
-          {photo ? <img src={photo} alt="" className="h-16 w-16 rounded-full object-cover" /> : <div className="skeleton h-16 w-16 rounded-full" />}
+          {photo ? <img src={photo} alt="" decoding="async" className="h-16 w-16 rounded-full object-cover" /> : <div className="skeleton h-16 w-16 rounded-full" />}
           <span className="absolute bottom-1 right-0 h-4 w-4 rounded-full border-2 border-white bg-emerald-500" />
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-black">{title}</h1>
-          <p className="text-sm text-zinc-500">{peerTyping || botTyping ? "typing..." : chat?.targetOnline === false ? "Offline" : "Online"}</p>
+          <p className="text-sm text-zinc-500">{peerTyping || botTyping ? "Typing..." : chat?.targetOnline === false ? "Offline" : "Online"}</p>
         </div>
         <button onClick={() => startCall("audio")} className="grid h-10 w-10 place-items-center rounded-full text-[#f72565] active:bg-zinc-100"><Phone size={23} /></button>
         <button onClick={() => startCall("video")} className="grid h-10 w-10 place-items-center rounded-full text-[#f72565] active:bg-zinc-100"><Video size={24} /></button>
@@ -250,7 +294,7 @@ export default function ChatRoom() {
             const mine = message.senderType === "user" || message.senderId === user.uid;
             return (
               <div key={message.id} className={`flex items-end gap-3 ${mine ? "justify-end" : "justify-start"}`}>
-                {!mine && (photo ? <img src={photo} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="skeleton h-12 w-12 rounded-full" />)}
+                {!mine && (photo ? <img src={photo} alt="" loading="lazy" decoding="async" className="h-12 w-12 rounded-full object-cover" /> : <div className="skeleton h-12 w-12 rounded-full" />)}
                 <div className={`max-w-[72%] ${mine ? "text-right" : "text-left"}`}>
                   <div className={`rounded-[22px] px-5 py-4 text-lg leading-7 ${mine ? "pink-gradient text-white" : "bg-zinc-100 text-zinc-950"}`}>
                     {renderMessage(message)}
@@ -265,8 +309,8 @@ export default function ChatRoom() {
           })}
           {(peerTyping || botTyping) && (
             <div className="flex items-end gap-3">
-              {photo ? <img src={photo} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="skeleton h-12 w-12 rounded-full" />}
-              <div className="rounded-[22px] bg-zinc-100 px-5 py-4 text-zinc-500">typing...</div>
+              {photo ? <img src={photo} alt="" loading="lazy" decoding="async" className="h-12 w-12 rounded-full object-cover" /> : <div className="skeleton h-12 w-12 rounded-full" />}
+              <TypingIndicator />
             </div>
           )}
           <div ref={bottomRef} />
