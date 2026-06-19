@@ -8,7 +8,7 @@ import { getLocalResource, listLocalResource, upsertLocalResource } from "../ser
 import { verifyRazorpaySignature } from "../utils/crypto.js";
 
 const PLAN_FALLBACK_LINKS = {
-  first_9: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=9.00&cu=INR",
+  first_9: "upi://pay?pa=8002351461@ybl&pn=Merchant&am=9.00&cu=INR",
   normal_19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
   offer_49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
   premium_99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR"

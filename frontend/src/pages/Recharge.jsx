@@ -31,11 +31,11 @@ const PLAN_DISPLAY = {
 };
 
 const UPI_PAYMENT_LINKS = {
-  first_9: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=9.00&cu=INR",
+  first_9: "upi://pay?pa=8002351461@ybl&pn=Merchant&am=9.00&cu=INR",
   normal_19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
   offer_49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
   premium_99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR",
-  9: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=9.00&cu=INR",
+  9: "upi://pay?pa=8002351461@ybl&pn=Merchant&am=9.00&cu=INR",
   19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
   49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
   99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR"
