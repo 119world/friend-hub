@@ -45,13 +45,15 @@ function paymentDoc(orderId, payload) {
 }
 
 async function savePayment(orderId, payload) {
+  const updatedAt = nowValue();
   const doc = paymentDoc(orderId, {
     ...payload,
-    updated_at: nowValue(),
-    updatedAt: nowValue()
+    updated_at: updatedAt,
+    updatedAt
   });
   if (!hasFirestoreCredentials) {
-    await upsertLocalResource("payments", { ...doc, updated_at: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    const localUpdatedAt = new Date().toISOString();
+    await upsertLocalResource("payments", { ...doc, updated_at: localUpdatedAt, updatedAt: localUpdatedAt });
     return doc;
   }
   await db.collection("payments").doc(orderId).set(doc, { merge: true });
@@ -125,16 +127,18 @@ async function finalizePayment(orderId, status, paymentId = "") {
   if (!item) return null;
   if (item.status === STATUS.SUCCESS) return item;
 
+  const updatedAt = nowValue();
   const patch = {
     status,
     payment_id: paymentId || item.payment_id || "",
     paymentId: paymentId || item.paymentId || "",
-    updated_at: nowValue(),
-    updatedAt: nowValue()
+    updated_at: updatedAt,
+    updatedAt
   };
   if (status === STATUS.SUCCESS) {
-    patch.paid_at = nowValue();
-    patch.paidAt = nowValue();
+    const paidAt = nowValue();
+    patch.paid_at = paidAt;
+    patch.paidAt = paidAt;
   }
   const saved = await savePayment(orderId, patch);
   console.info("[payments] payment event", { orderId, status, paymentId: patch.payment_id });
@@ -197,6 +201,7 @@ export async function createOrder(req, res) {
   }
 
   const data = response.data || {};
+  const createdAt = nowValue();
   await savePayment(orderId, {
     user_id: req.user.uid,
     userId: req.user.uid,
@@ -209,8 +214,8 @@ export async function createOrder(req, res) {
     cf_order_id: data.cf_order_id || "",
     payment_session_id: data.payment_session_id,
     paymentSessionId: data.payment_session_id,
-    created_at: nowValue(),
-    createdAt: nowValue()
+    created_at: createdAt,
+    createdAt
   });
   console.info("[payments] Cashfree order created", { orderId, userId: req.user.uid, amount });
 

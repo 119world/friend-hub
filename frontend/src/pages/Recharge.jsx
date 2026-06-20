@@ -21,9 +21,22 @@ const PLAN_DISPLAY = {
 
 let cashfreeLoader;
 
+function prepareCashfreeConnection() {
+  if (document.querySelector('link[data-cashfree-preconnect="true"]')) return;
+  for (const rel of ["dns-prefetch", "preconnect"]) {
+    const link = document.createElement("link");
+    link.rel = rel;
+    link.href = "https://sdk.cashfree.com";
+    link.dataset.cashfreePreconnect = "true";
+    if (rel === "preconnect") link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+  }
+}
+
 function loadCashfreeSdk() {
   if (window.Cashfree) return Promise.resolve(window.Cashfree);
   if (!cashfreeLoader) {
+    prepareCashfreeConnection();
     cashfreeLoader = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
@@ -60,6 +73,14 @@ export default function Recharge() {
 
   useEffect(() => listenPlans(setPlans), []);
   useEffect(() => {
+    prepareCashfreeConnection();
+    loadCashfreeSdk().catch(() => {});
+    const baseUrl = String(api.defaults.baseURL || "").replace(/\/+$/, "");
+    if (baseUrl) {
+      fetch(`${baseUrl}/payments/webhook`, { cache: "no-store", keepalive: true }).catch(() => {});
+    }
+  }, []);
+  useEffect(() => {
     if (!selectedPlanId && plans.length) setSelectedPlanId(plans[0].id);
   }, [plans, selectedPlanId]);
 
@@ -89,7 +110,7 @@ export default function Recharge() {
   }, [applyWalletCredit, searchParams]);
 
   async function verifyOrder(orderId, plan) {
-    const { data } = await api.post("/payments/verify", { order_id: orderId });
+    const { data } = await api.post("/payments/verify", { order_id: orderId }, { timeout: 20000 });
     applyWalletCredit(data.plan);
     setPaymentStatus({ type: "success", title: "Payment successful", body: `${data.plan?.diamonds || plan.diamonds || 0} diamonds added to your wallet.`, orderId });
   }
@@ -100,8 +121,9 @@ export default function Recharge() {
     setPaymentStatus(null);
     setBusy(plan.id);
     try {
-      const { data } = await api.post("/payments/create-order", { planId: plan.id });
-      const Cashfree = await loadCashfreeSdk();
+      const orderRequest = api.post("/payments/create-order", { planId: plan.id }, { timeout: 20000 });
+      const sdkRequest = loadCashfreeSdk();
+      const [{ data }, Cashfree] = await Promise.all([orderRequest, sdkRequest]);
       const cashfree = Cashfree({ mode: data.cashfreeEnv === "sandbox" ? "sandbox" : "production" });
       const checkoutResult = await cashfree.checkout({
         paymentSessionId: data.payment_session_id || data.paymentSessionId,
