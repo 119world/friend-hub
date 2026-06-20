@@ -98,12 +98,13 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nPASTE_PRIVATE_KEY_WITH_N_SLAS
 CLOUDINARY_CLOUD_NAME=xxxx
 CLOUDINARY_API_KEY=xxxx
 CLOUDINARY_API_SECRET=xxxx
-RAZORPAY_KEY_ID=rzp_live_xxxxx
-RAZORPAY_KEY_SECRET=xxxx
-RAZORPAY_WEBHOOK_SECRET=xxxx
+CASHFREE_CLIENT_ID=
+CASHFREE_CLIENT_SECRET=
+CASHFREE_ENV=PRODUCTION
+BACKEND_URL=https://friend-hub-backend.onrender.com
 ```
 
-Razorpay webhook URL:
+Cashfree webhook URL:
 
 ```text
 https://friend-hub-backend.onrender.com/api/payments/webhook
@@ -111,10 +112,8 @@ https://friend-hub-backend.onrender.com/api/payments/webhook
 
 ## 4. Admin-Managed Keys
 
-These are not required in `.env` because the admin dashboard stores them in Firestore:
+These are managed in Firestore/admin screens:
 
-- Extra Razorpay accounts
-- UPI/QR payment accounts
 - API key failover entries
 - Recharge plans
 - Partner profiles

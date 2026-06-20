@@ -1,292 +1,328 @@
+import { cashfree, hasCashfreeCredentials } from "../config/cashfree.js";
 import { env } from "../config/env.js";
 import { db, firebaseAdmin, hasFirestoreCredentials } from "../config/firebaseAdmin.js";
-import { razorpay } from "../config/razorpay.js";
-import Razorpay from "razorpay";
-import { getActivePaymentAccount, markAccountUsed } from "../services/bankSwitchService.js";
 import { creditWallet, getPlan } from "../services/paymentService.js";
 import { getLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
-import { verifyRazorpaySignature } from "../utils/crypto.js";
 
-const PLAN_FALLBACK_LINKS = {
-  first_9: "upi://pay?pa=8002351461@ybl&pn=Merchant&am=9.00&cu=INR",
-  normal_19: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=19.00&cu=INR",
-  offer_49: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=49.00&cu=INR",
-  premium_99: "upi://pay?pa=friend119hub@oksbi&pn=Friend%20Hub&am=99.00&cu=INR"
+const STATUS = {
+  PENDING: "PENDING",
+  SUCCESS: "SUCCESS",
+  FAILED: "FAILED"
 };
-
-function publicAccount(account) {
-  if (!account) return null;
-  const { keySecret, webhookSecret, ...safe } = account;
-  return safe;
-}
-
-function fallbackPaymentUrlFor(planId, account) {
-  return (
-    PLAN_FALLBACK_LINKS[planId] ||
-    account?.fallbackPaymentUrl ||
-    account?.paymentLinkUrl ||
-    env.razorpay.fallbackPaymentUrl ||
-    ""
-  );
-}
-
-function razorpayClientFor(account) {
-  const keyId = account?.keyId || env.razorpay.keyId;
-  const keySecret = account?.keySecret || env.razorpay.keySecret;
-  if (!keyId || !keySecret || String(keyId).includes("xxxxx")) return null;
-  if (!account?.keyId) return razorpay;
-  return new Razorpay({ key_id: keyId, key_secret: keySecret });
-}
 
 function nowValue() {
   return hasFirestoreCredentials ? firebaseAdmin.firestore.FieldValue.serverTimestamp() : new Date().toISOString();
 }
 
-async function savePayment(orderId, payload) {
-  if (!hasFirestoreCredentials) {
-    await upsertLocalResource("payments", { id: orderId, ...payload, updatedAt: new Date().toISOString() });
-    return;
-  }
-  try {
-    await db.collection("payments").doc(orderId).set(payload, { merge: true });
-  } catch {}
+function orderIdFor(userId, planId) {
+  const safeUser = String(userId || "user").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 28);
+  const safePlan = String(planId || "plan").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 24);
+  return `fh_${safeUser}_${safePlan}_${Date.now()}`;
 }
 
-async function verifyAnyWebhook(raw, signature) {
-  if (env.razorpay.webhookSecret && verifyRazorpaySignature(raw, signature, env.razorpay.webhookSecret)) return true;
-  if (!hasFirestoreCredentials) {
-    const accounts = await listLocalResource("paymentAccounts");
-    return accounts.some((account) => account.active !== false && account.webhookSecret && verifyRazorpaySignature(raw, signature, account.webhookSecret));
-  }
-  const snap = await db.collection("paymentAccounts").where("active", "==", true).limit(50).get().catch(() => null);
-  if (!snap) return false;
-  return snap.docs.some((doc) => {
-    const secret = doc.data().webhookSecret;
-    return secret && verifyRazorpaySignature(raw, signature, secret);
+function cleanPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return /^[6-9]\d{9}$/.test(digits) ? digits : "9999999999";
+}
+
+function customerDetails(req) {
+  return {
+    customer_id: String(req.user.uid),
+    customer_name: String(req.user.name || req.user.displayName || "Friend Hub User").slice(0, 80),
+    customer_email: req.user.email || undefined,
+    customer_phone: cleanPhone(req.body?.customerPhone || req.user.phone_number || req.user.phone)
+  };
+}
+
+function paymentDoc(orderId, payload) {
+  return {
+    id: orderId,
+    order_id: orderId,
+    orderId,
+    currency: "INR",
+    ...payload
+  };
+}
+
+async function savePayment(orderId, payload) {
+  const doc = paymentDoc(orderId, {
+    ...payload,
+    updated_at: nowValue(),
+    updatedAt: nowValue()
   });
+  if (!hasFirestoreCredentials) {
+    await upsertLocalResource("payments", { ...doc, updated_at: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    return doc;
+  }
+  await db.collection("payments").doc(orderId).set(doc, { merge: true });
+  return doc;
 }
 
 async function findPayment(orderId) {
+  if (!orderId) return null;
   if (!hasFirestoreCredentials) return getLocalResource("payments", orderId);
-  const ref = db.collection("payments").doc(orderId);
-  const snap = await ref.get();
+  const snap = await db.collection("payments").doc(orderId).get();
   return snap.exists ? { id: snap.id, ...snap.data() } : null;
 }
 
-async function markPaid(orderId, patch) {
-  if (!hasFirestoreCredentials) {
-    const item = await getLocalResource("payments", orderId);
-    if (!item) return null;
-    const next = { ...item, ...patch, paidAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    await upsertLocalResource("payments", next);
-    return next;
+async function findReusablePendingPayment(userId, planId, amount) {
+  const matches = [];
+  if (hasFirestoreCredentials) {
+    const snap = await db.collection("payments")
+      .where("user_id", "==", userId)
+      .where("planId", "==", planId)
+      .where("status", "==", STATUS.PENDING)
+      .limit(10)
+      .get()
+      .catch(() => null);
+    if (snap) matches.push(...snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  } else {
+    matches.push(...(await listLocalResource("payments")).filter((item) => (
+      item.user_id === userId &&
+      item.planId === planId &&
+      item.status === STATUS.PENDING
+    )));
   }
-  await db.collection("payments").doc(orderId).set({
-    ...patch,
-    paidAt: firebaseAdmin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-  return findPayment(orderId);
+  return matches
+    .filter((item) => Number(item.amount) === Number(amount) && item.payment_session_id)
+    .sort((a, b) => String(b.created_at || b.createdAt || "").localeCompare(String(a.created_at || a.createdAt || "")))[0] || null;
 }
 
-async function secretForPayment(item) {
-  if (!item?.activePaymentAccountId) return env.razorpay.keySecret;
-  if (!hasFirestoreCredentials) {
-    const accounts = [
-      ...(await listLocalResource("paymentAccounts")),
-      ...(await listLocalResource("bankAccounts"))
-    ];
-    return accounts.find((account) => account.id === item.activePaymentAccountId)?.keySecret || env.razorpay.keySecret;
+function frontendReturnUrl() {
+  return `${env.clientUrl.replace(/\/$/, "")}/recharge?order_id={order_id}`;
+}
+
+function backendWebhookUrl() {
+  const base = (env.serverUrl || "").replace(/\/$/, "");
+  return base ? `${base}/api/payments/webhook` : undefined;
+}
+
+function cashfreeError(error) {
+  return error?.response?.data?.message || error?.response?.data?.error_description || error?.message || "Cashfree request failed.";
+}
+
+function paymentIdFromPayments(payments = []) {
+  return payments.find((item) => item.payment_status === "SUCCESS")?.cf_payment_id ||
+    payments[0]?.cf_payment_id ||
+    "";
+}
+
+function isSuccess(order, payments = []) {
+  return order?.order_status === "PAID" || payments.some((item) => item.payment_status === "SUCCESS");
+}
+
+function isFailed(order, payments = []) {
+  return ["EXPIRED", "TERMINATED"].includes(order?.order_status) ||
+    payments.some((item) => ["FAILED", "CANCELLED", "USER_DROPPED"].includes(item.payment_status));
+}
+
+async function finalizePayment(orderId, status, paymentId = "") {
+  const item = await findPayment(orderId);
+  if (!item) return null;
+  if (item.status === STATUS.SUCCESS) return item;
+
+  const patch = {
+    status,
+    payment_id: paymentId || item.payment_id || "",
+    paymentId: paymentId || item.paymentId || "",
+    updated_at: nowValue(),
+    updatedAt: nowValue()
+  };
+  if (status === STATUS.SUCCESS) {
+    patch.paid_at = nowValue();
+    patch.paidAt = nowValue();
   }
-  const snap = await db.collection("paymentAccounts").doc(item.activePaymentAccountId).get().catch(() => null);
-  return snap?.data()?.keySecret || env.razorpay.keySecret;
+  const saved = await savePayment(orderId, patch);
+  console.info("[payments] payment event", { orderId, status, paymentId: patch.payment_id });
+
+  if (status === STATUS.SUCCESS) {
+    await creditWallet(item.user_id || item.userId, item.planId);
+  }
+  return { ...item, ...saved };
 }
 
 export async function createOrder(req, res) {
-  const planId = req.body.planId || "normal_19";
+  if (!hasCashfreeCredentials()) {
+    return res.status(503).json({ message: "Cashfree credentials are not configured." });
+  }
+
+  const planId = String(req.body?.planId || "normal_19").trim();
   const plan = await getPlan(planId);
   const amount = Number(plan.amount || plan.price);
-  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ message: "Invalid recharge plan." });
-  const account = await getActivePaymentAccount(amount);
-  const fallbackPaymentUrl = fallbackPaymentUrlFor(planId, account);
-  const gateway = account?.gateway || "razorpay";
-  if (gateway === "upi" || gateway === "manual_upi" || (account?.upiId && !account?.keyId && !env.razorpay.keyId)) {
-    const orderId = `manual_${Date.now()}`;
-    await savePayment(orderId, {
-      userId: req.user.uid,
-      planId,
-      amount,
-      status: "manual_pending",
-      orderId,
-      activePaymentAccountId: account?.id || null,
-      createdAt: nowValue()
-    });
-    return res.json({
-      orderId,
-      amount: amount * 100,
-      account: publicAccount(account),
-      manual: true,
-      paymentOptions: ["UPI", "QR", "PhonePe", "Google Pay", "Paytm", "BHIM"],
-      fallbackPaymentUrl
-    });
+  if (!Number.isFinite(amount) || amount < 1) {
+    return res.status(400).json({ message: "Invalid recharge plan." });
   }
-  const client = razorpayClientFor(account);
-  if (!client) {
-    const orderId = `order_demo_${Date.now()}`;
-    await savePayment(orderId, {
-      userId: req.user.uid,
-      planId,
-      amount,
-      status: "demo_created",
-      orderId,
-      activePaymentAccountId: account?.id || null,
-      createdAt: nowValue()
-    });
+
+  const existing = await findReusablePendingPayment(req.user.uid, planId, amount);
+  if (existing) {
     return res.json({
-      orderId,
-      amount: amount * 100,
-      keyId: account?.keyId || env.razorpay.keyId || "rzp_test_missing",
-      account: publicAccount(account),
-      demo: true,
-      fallbackPaymentUrl
-    });
-  }
-  let order;
-  try {
-    order = await client.orders.create({
-      amount: amount * 100,
+      order_id: existing.order_id,
+      orderId: existing.orderId,
+      payment_session_id: existing.payment_session_id,
+      paymentSessionId: existing.paymentSessionId,
+      amount,
       currency: "INR",
-      receipt: `fh_${Date.now()}`,
-      notes: { userId: req.user.uid, planId, accountId: account?.id || "" }
-    });
-  } catch {
-    const orderId = `order_demo_${Date.now()}`;
-    await savePayment(orderId, {
-      userId: req.user.uid,
-      planId,
-      amount,
-      status: "demo_created",
-      orderId,
-      activePaymentAccountId: account?.id || null,
-      createdAt: nowValue()
-    });
-    return res.json({
-      orderId,
-      amount: amount * 100,
-      keyId: account?.keyId || env.razorpay.keyId || "rzp_test_missing",
-      account: publicAccount(account),
-      demo: true,
-      fallbackPaymentUrl
+      cashfreeEnv: env.cashfree.env === "SANDBOX" ? "sandbox" : "production"
     });
   }
-  await savePayment(order.id, {
+
+  const orderId = orderIdFor(req.user.uid, planId);
+  const notifyUrl = backendWebhookUrl();
+  const request = {
+    order_id: orderId,
+    order_amount: amount,
+    order_currency: "INR",
+    customer_details: customerDetails(req),
+    order_meta: {
+      return_url: frontendReturnUrl(),
+      ...(notifyUrl ? { notify_url: notifyUrl } : {})
+    },
+    order_note: `Friend Hub recharge: ${plan.title || planId}`,
+    order_tags: {
+      user_id: req.user.uid,
+      plan_id: planId
+    }
+  };
+
+  let response;
+  try {
+    response = await cashfree.PGCreateOrder(request, undefined, orderId);
+  } catch (error) {
+    console.error("[payments] Cashfree order creation failed", { orderId, error: cashfreeError(error) });
+    return res.status(502).json({ message: cashfreeError(error) });
+  }
+
+  const data = response.data || {};
+  await savePayment(orderId, {
+    user_id: req.user.uid,
     userId: req.user.uid,
     planId,
     amount,
-    status: "created",
-    orderId: order.id,
-    activePaymentAccountId: account?.id || null,
+    currency: "INR",
+    status: STATUS.PENDING,
+    payment_id: "",
+    paymentId: "",
+    cf_order_id: data.cf_order_id || "",
+    payment_session_id: data.payment_session_id,
+    paymentSessionId: data.payment_session_id,
+    created_at: nowValue(),
     createdAt: nowValue()
   });
-  res.json({
-    orderId: order.id,
-    amount: order.amount,
-    keyId: account?.keyId || env.razorpay.keyId,
-    account: publicAccount(account),
-    paymentOptions: ["UPI", "Cards", "Netbanking", "Wallets", "Pay Later", "QR"],
-    fallbackPaymentUrl
+  console.info("[payments] Cashfree order created", { orderId, userId: req.user.uid, amount });
+
+  return res.status(201).json({
+    order_id: orderId,
+    orderId,
+    payment_session_id: data.payment_session_id,
+    paymentSessionId: data.payment_session_id,
+    amount,
+    currency: "INR",
+    cashfreeEnv: env.cashfree.env === "SANDBOX" ? "sandbox" : "production"
   });
 }
 
 export async function verifyPayment(req, res) {
-  const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body || {};
+  const orderId = String(req.body?.order_id || req.body?.orderId || req.query?.order_id || "").trim();
+  if (!orderId) return res.status(400).json({ message: "Order ID is required." });
+
   const item = await findPayment(orderId);
-  if (!item) return res.status(404).json({ message: "Payment order not found." });
-  const secret = await secretForPayment(item);
-  if (!verifyRazorpaySignature(`${orderId}|${paymentId}`, signature, secret)) {
-    return res.status(400).json({ message: "Invalid payment signature." });
+  if (!item || (item.user_id || item.userId) !== req.user.uid) {
+    return res.status(404).json({ message: "Payment order not found." });
   }
-  if (item.status !== "paid") {
-    await markPaid(orderId, { status: "paid", paymentId });
-    await creditWallet(item.userId, item.planId);
-    await markAccountUsed(item.activePaymentAccountId, Number(item.amount || 0));
+
+  let order;
+  let payments = [];
+  try {
+    const [orderResponse, paymentsResponse] = await Promise.all([
+      cashfree.PGFetchOrder(orderId),
+      cashfree.PGOrderFetchPayments(orderId).catch(() => ({ data: [] }))
+    ]);
+    order = orderResponse.data;
+    payments = Array.isArray(paymentsResponse.data) ? paymentsResponse.data : [];
+  } catch (error) {
+    console.error("[payments] Cashfree verification failed", { orderId, error: cashfreeError(error) });
+    return res.status(502).json({ message: cashfreeError(error) });
   }
-  const plan = await getPlan(item.planId);
-  res.json({ ok: true, plan, orderId, paymentId });
+
+  const paymentId = paymentIdFromPayments(payments);
+  if (isSuccess(order, payments)) {
+    const saved = await finalizePayment(orderId, STATUS.SUCCESS, paymentId);
+    const plan = await getPlan(saved.planId || item.planId);
+    return res.json({ ok: true, status: STATUS.SUCCESS, plan, order_id: orderId, orderId, payment_id: paymentId, paymentId });
+  }
+
+  if (isFailed(order, payments)) {
+    await finalizePayment(orderId, STATUS.FAILED, paymentId);
+    return res.status(402).json({ ok: false, status: STATUS.FAILED, order_id: orderId, orderId, payment_id: paymentId, paymentId, message: "Payment failed." });
+  }
+
+  return res.status(202).json({ ok: false, status: STATUS.PENDING, order_id: orderId, orderId, message: "Payment is still pending." });
 }
 
-export async function submitManualPayment(req, res) {
-  const { orderId, transactionId, note } = req.body || {};
-  if (!orderId || !transactionId) {
-    return res.status(400).json({ message: "Order ID and transaction ID are required." });
-  }
-  const item = await findPayment(orderId);
-  if (!item || item.userId !== req.user.uid) {
-    return res.status(404).json({ message: "Manual payment order not found." });
-  }
-  if (item.status === "paid") {
-    const plan = await getPlan(item.planId);
-    return res.json({ ok: true, status: "paid", plan, orderId });
-  }
-  await savePayment(orderId, {
-    manualTransactionId: String(transactionId).trim(),
-    userNote: String(note || "").trim(),
-    status: "manual_submitted",
-    submittedAt: nowValue()
-  });
-  res.json({
-    ok: true,
-    status: "manual_submitted",
-    message: "Transaction ID submitted. Admin will verify and activate credits."
-  });
+function isCashfreeTestRequest(event, signature, timestamp) {
+  const hasPaymentData = event?.data?.payment || event?.data?.order || event?.order_id || event?.payment_status;
+  return !signature || !timestamp || !hasPaymentData;
 }
 
-export async function createSubscription(req, res) {
-  const planId = req.body.planId || "premium_99";
-  const plan = await getPlan(planId);
-  const account = await getActivePaymentAccount(Number(plan.price || plan.amount || 0));
-  const client = razorpayClientFor(account);
-  const razorpayPlanId = plan.razorpayPlanId || plan.gatewayPlanId;
-  if (!client) return res.status(400).json({ message: "Razorpay keys are not configured." });
-  if (!razorpayPlanId) return res.status(400).json({ message: "Add Razorpay subscription plan id in admin first." });
-  const subscription = await client.subscriptions.create({
-    plan_id: razorpayPlanId,
-    total_count: Number(plan.totalCycles || 12),
-    quantity: 1,
-    customer_notify: 1,
-    notes: {
-      userId: req.user.uid,
-      planId,
-      accountId: account?.id || ""
-    }
-  });
-  await savePayment(subscription.id, {
-    userId: req.user.uid,
-    planId,
-    amount: Number(plan.price || plan.amount || 0),
-    status: "subscription_created",
-    subscriptionId: subscription.id,
-    activePaymentAccountId: account?.id || null,
-    createdAt: hasFirestoreCredentials ? firebaseAdmin.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
-  });
-  res.json({ subscriptionId: subscription.id, status: subscription.status, keyId: account?.keyId || env.razorpay.keyId, account: publicAccount(account) });
+function webhookEventDetails(event = {}) {
+  const type = String(event.type || event.event || "").toUpperCase();
+  const orderId = event?.data?.order?.order_id || event?.data?.order_id || event?.order_id;
+  const paymentId = event?.data?.payment?.cf_payment_id || event?.data?.payment?.payment_id || event?.cf_payment_id || "";
+  const paymentStatus = String(event?.data?.payment?.payment_status || event?.payment_status || "").toUpperCase();
+  const orderStatus = String(event?.data?.order?.order_status || event?.order_status || "").toUpperCase();
+  return { type, orderId, paymentId, paymentStatus, orderStatus };
+}
+
+async function processCashfreeWebhook(event) {
+  const { type, orderId, paymentId, paymentStatus, orderStatus } = webhookEventDetails(event);
+  console.info("[payments] Cashfree webhook received", { type, orderId, paymentStatus, orderStatus });
+
+  if (!orderId) return;
+
+  if (
+    paymentStatus === "SUCCESS" ||
+    orderStatus === "PAID" ||
+    type.includes("SUCCESS")
+  ) {
+    await finalizePayment(orderId, STATUS.SUCCESS, paymentId);
+    return;
+  }
+
+  if (
+    ["FAILED", "CANCELLED", "USER_DROPPED"].includes(paymentStatus) ||
+    ["EXPIRED", "TERMINATED"].includes(orderStatus) ||
+    type.includes("FAILED") ||
+    type.includes("DROPPED")
+  ) {
+    await finalizePayment(orderId, STATUS.FAILED, paymentId);
+  }
+}
+
+export function webhookHealth(req, res) {
+  res.json({ status: "ok" });
 }
 
 export async function webhook(req, res) {
-  const signature = req.headers["x-razorpay-signature"];
-  const raw = req.rawBody || JSON.stringify(req.body);
-  if (!(await verifyAnyWebhook(raw, signature))) {
+  const signature = req.headers["x-webhook-signature"];
+  const timestamp = req.headers["x-webhook-timestamp"];
+  const raw = req.rawBody || JSON.stringify(req.body || {});
+  const event = req.body || {};
+
+  console.info("[payments] Cashfree webhook payload", event);
+
+  if (isCashfreeTestRequest(event, signature, timestamp)) {
+    return res.status(200).json({ received: true, test: true });
+  }
+
+  try {
+    cashfree.PGVerifyWebhookSignature(signature, raw, timestamp);
+  } catch (error) {
+    console.warn("[payments] Invalid Cashfree webhook signature", { error: error.message });
     return res.status(400).json({ message: "Invalid webhook signature" });
   }
-  const event = req.body;
-  if (event.event === "payment.captured") {
-    const payment = event.payload.payment.entity;
-    const orderId = payment.order_id;
-    const item = await findPayment(orderId);
-    if (item && item.status !== "paid") {
-      await markPaid(orderId, { status: "paid", paymentId: payment.id });
-      await creditWallet(item.userId, item.planId);
-      await markAccountUsed(item.activePaymentAccountId, Number(item.amount || 0));
-    }
-  }
-  res.json({ received: true });
+
+  res.status(200).json({ received: true });
+  processCashfreeWebhook(event).catch((error) => {
+    console.error("[payments] Cashfree webhook processing failed", { error: error.message });
+  });
 }

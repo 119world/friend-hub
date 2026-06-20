@@ -77,9 +77,10 @@ CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 
-RAZORPAY_KEY_ID=rzp_test_or_live_key
-RAZORPAY_KEY_SECRET=your-razorpay-secret
-RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
+CASHFREE_CLIENT_ID=your-cashfree-client-id
+CASHFREE_CLIENT_SECRET=your-cashfree-client-secret
+CASHFREE_ENV=PRODUCTION
+BACKEND_URL=https://your-render-service.onrender.com
 ```
 
 After Render deploys, check:
@@ -158,25 +159,18 @@ In Firebase Console:
 
 If Google login is enabled, make sure Google provider is enabled in Firebase Authentication.
 
-## 7. Razorpay
+## 7. Cashfree
 
-In Razorpay Dashboard:
+In Cashfree Dashboard:
 
-- Keep test keys for testing
-- Change to live keys later in Render env variables
+- Use sandbox credentials for testing and production credentials for launch.
 - Set webhook URL:
 
 ```text
 https://your-render-service.onrender.com/api/payments/webhook
 ```
 
-Webhook secret must match `RAZORPAY_WEBHOOK_SECRET`.
-
-For subscription/autopay later:
-
-- Create Razorpay subscription plan in Razorpay dashboard
-- Copy Razorpay plan id
-- Add it in Admin > Recharge Plans as `razorpayPlanId` or `gatewayPlanId`
+The backend verifies Cashfree webhook signatures with `CASHFREE_CLIENT_SECRET`.
 
 ## 8. Cloudinary
 
@@ -199,7 +193,7 @@ Also, do not run production with `FIRESTORE_ENABLED=false`. Backend local JSON d
 - Neon Postgres free tier
 - MongoDB Atlas free tier
 
-Use Firestore or another durable DB before real public launch if profile data, admin data, partner media, payment accounts, and API keys must survive redeploys.
+Use Firestore or another durable DB before real public launch if profile data, admin data, partner media, payment records, and API keys must survive redeploys.
 
 ## 10. Final Live QA
 
@@ -214,6 +208,6 @@ After deployment, check:
 - Admin partner/bot create/update
 - Admin media upload
 - Recharge plan list
-- Razorpay test order
+- Cashfree test order
 - Maintenance mode on/off
 - Mobile layout

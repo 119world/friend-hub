@@ -61,7 +61,7 @@ service cloud.firestore {
     }
 
     match /payments/{paymentId} {
-      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.userId == request.auth.uid || resource.data.user_id == request.auth.uid);
       allow write: if false;
     }
 
@@ -75,8 +75,6 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /bankAccounts/{id} { allow read, write: if false; }
-    match /paymentAccounts/{id} { allow read, write: if false; }
     match /partnerAccounts/{id} { allow read, write: if false; }
     match /apiKeys/{id} { allow read, write: if false; }
     match /appSettings/{id} { allow read: if true; allow write: if false; }

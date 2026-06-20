@@ -149,20 +149,5 @@ export const defaultLocalStore = {
   referralRules: [
     { id: "ref_5", requiredReferrals: 5, bonusDiamonds: 25, title: "5 friends bonus", active: true },
     { id: "ref_10", requiredReferrals: 10, bonusDiamonds: 75, title: "10 friends bonus", active: true }
-  ],
-  paymentAccounts: [
-    {
-      id: "razorpay_primary",
-      gateway: "razorpay",
-      label: "Razorpay Primary",
-      dailyLimit: 10000,
-      weeklyLimit: 0,
-      monthlyLimit: 0,
-      yearlyLimit: 0,
-      usedAmount: 0,
-      autoRecycleOnExhaustion: true,
-      active: true,
-      priority: 1
-    }
   ]
 };

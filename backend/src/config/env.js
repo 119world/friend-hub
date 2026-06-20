@@ -45,10 +45,10 @@ export const env = {
     apiKey: process.env.CLOUDINARY_API_KEY,
     apiSecret: process.env.CLOUDINARY_API_SECRET
   },
-  razorpay: {
-    keyId: process.env.RAZORPAY_KEY_ID,
-    keySecret: process.env.RAZORPAY_KEY_SECRET,
-    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
-    fallbackPaymentUrl: process.env.RAZORPAY_FALLBACK_PAYMENT_URL || process.env.RAZORPAY_PAYMENT_LINK_URL || ""
+  serverUrl: firstEnv("BACKEND_URL", "API_BASE_URL", "SERVER_URL"),
+  cashfree: {
+    clientId: process.env.CASHFREE_CLIENT_ID,
+    clientSecret: process.env.CASHFREE_CLIENT_SECRET,
+    env: (process.env.CASHFREE_ENV || "PRODUCTION").toUpperCase()
   }
 };

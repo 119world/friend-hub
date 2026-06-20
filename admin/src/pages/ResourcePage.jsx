@@ -3,9 +3,9 @@ import { Trash2 } from "lucide-react";
 import DataTable from "../components/DataTable";
 import adminApi from "../services/adminApi";
 
-const longFields = new Set(["bio", "photos", "videos", "galleryPhotos", "personalityConfig", "keywords", "welcomeMessage", "firstReply", "secondReply", "limitReachedMessage", "rechargeMessage", "voiceCallLockedMessage", "qrImage", "bannerUrl", "maintenanceMessage"]);
+const longFields = new Set(["bio", "photos", "videos", "galleryPhotos", "personalityConfig", "keywords", "welcomeMessage", "firstReply", "secondReply", "limitReachedMessage", "rechargeMessage", "voiceCallLockedMessage", "bannerUrl", "maintenanceMessage"]);
 const booleanFields = new Set(["active", "verified", "online", "autoPay", "subscription", "subscriptionEnabled", "manualFailover", "showInDiscovery", "showInMatches", "allowAutoContact", "rechargeTrigger", "offerTrigger", "autoRecycleOnExhaustion", "maintenanceMode"]);
-const uploadFields = new Set(["photos", "videos", "galleryPhotos", "qrImage", "bannerUrl"]);
+const uploadFields = new Set(["photos", "videos", "galleryPhotos", "bannerUrl"]);
 
 function initialForm(fields) {
   return Object.fromEntries(fields.map((field) => [field, booleanFields.has(field) ? "true" : ""]));
@@ -119,7 +119,7 @@ export default function ResourcePage({ title, endpoint, fields }) {
       if (!url) throw new Error("Upload did not return a URL.");
       setForm((old) => {
         const existing = String(old[field] || "").trim();
-        const nextValue = field === "qrImage" || field === "bannerUrl"
+        const nextValue = field === "bannerUrl"
           ? url
           : [existing, url].filter(Boolean).join(", ");
         return { ...old, [field]: nextValue };

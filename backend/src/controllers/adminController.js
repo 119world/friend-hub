@@ -2,7 +2,6 @@ import { db, firebaseAdmin, hasFirestoreCredentials } from "../config/firebaseAd
 import { env } from "../config/env.js";
 import { clearCredentialResource, deleteCredentialResource, listCredentialResource, upsertCredentialResource } from "../services/credentialStore.js";
 import { clearLocalResource, deleteLocalResource, hasLocalResource, listLocalResource, upsertLocalResource } from "../services/localDataStore.js";
-import { creditWallet } from "../services/paymentService.js";
 import { startOfDay, startOfMonth, startOfWeek, startOfYear } from "../utils/timeWindow.js";
 
 const collectionMap = {
@@ -12,7 +11,6 @@ const collectionMap = {
   chats: "chats",
   payments: "payments",
   plans: "plans",
-  bankAccounts: "bankAccounts",
   apiKeys: "apiKeys",
   replyTemplates: "replyTemplates",
   appSettings: "appSettings",
@@ -20,7 +18,6 @@ const collectionMap = {
   offers: "offers",
   subscriptions: "subscriptions",
   callSessions: "callSessions",
-  paymentAccounts: "paymentAccounts",
   autoReplies: "autoReplies",
   adminAccounts: "adminAccounts",
   partnerAccounts: "partnerAccounts",
@@ -157,15 +154,6 @@ function normalizePayload(resource, body) {
       payload.temporaryAccessCode = password;
     }
   }
-  if (resource === "paymentAccounts") {
-    payload.active = payload.active !== false;
-    payload.gateway = payload.gateway || "razorpay";
-    payload.autoRecycleOnExhaustion = payload.autoRecycleOnExhaustion !== false;
-  }
-  if (resource === "bankAccounts") {
-    payload.active = payload.active !== false;
-    payload.autoRecycleOnExhaustion = payload.autoRecycleOnExhaustion !== false;
-  }
   if (resource === "apiKeys") {
     payload.active = payload.active !== false;
     payload.autoRecycleOnExhaustion = payload.autoRecycleOnExhaustion !== false;
@@ -290,10 +278,6 @@ function maskSensitive(name, data) {
     if (copy.secretKey) copy.secretKey = "stored in backend";
     if (copy.apiKey) copy.apiKey = `${String(copy.apiKey).slice(0, 6)}...stored`;
   }
-  if (name === "paymentAccounts") {
-    if (copy.keySecret) copy.keySecret = "stored in backend";
-    if (copy.webhookSecret) copy.webhookSecret = "stored in backend";
-  }
   if (name === "partnerAccounts") {
     if (copy.password) copy.password = "stored in backend";
     if (copy.temporaryAccessCode) copy.temporaryAccessCode = "stored in backend";
@@ -328,34 +312,25 @@ async function safeCount(name, buildQuery = (ref) => ref) {
 
 export async function dashboard(req, res) {
   const payments = hasFirestoreCredentials
-    ? await db.collection("payments").where("status", "==", "paid").get().catch(() => ({ docs: [] }))
-    : { docs: localDocs((await listLocalResource("payments")).filter((item) => item.status === "paid")) };
+    ? await db.collection("payments").where("status", "==", "SUCCESS").get().catch(() => ({ docs: [] }))
+    : { docs: localDocs((await listLocalResource("payments")).filter((item) => item.status === "SUCCESS")) };
   const totals = { todayReceived: 0, weekReceived: 0, monthReceived: 0, yearReceived: 0, lifetimeReceived: 0 };
   for (const doc of payments.docs) {
     const p = doc.data();
     const amount = Number(p.amount || 0);
-    const date = toDate(p.paidAt || p.createdAt);
+    const date = toDate(p.paid_at || p.paidAt || p.created_at || p.createdAt);
     totals.lifetimeReceived += amount;
     if (date >= startOfDay()) totals.todayReceived += amount;
     if (date >= startOfWeek()) totals.weekReceived += amount;
     if (date >= startOfMonth()) totals.monthReceived += amount;
     if (date >= startOfYear()) totals.yearReceived += amount;
   }
-  const gatewaySnap = hasFirestoreCredentials
-    ? await db.collection("paymentAccounts").where("active", "==", true).limit(50).get().catch(() => ({ docs: [] }))
-    : { docs: localDocs((await listLocalResource("paymentAccounts")).filter((item) => item.active !== false)) };
-  const bankSnap = hasFirestoreCredentials
-    ? await db.collection("bankAccounts").where("active", "==", true).limit(50).get().catch(() => ({ docs: [] }))
-    : { docs: localDocs((await listLocalResource("bankAccounts")).filter((item) => item.active !== false)) };
-  const bank = [...gatewaySnap.docs, ...bankSnap.docs]
-    .map((doc) => doc.data())
-    .sort((a, b) => Number(a.priority || 99) - Number(b.priority || 99))[0];
-  const failedPayments = await safeCount("payments", (ref) => ref.where("status", "in", ["failed", "cancelled"]));
+  const failedPayments = await safeCount("payments", (ref) => ref.where("status", "==", "FAILED"));
   const usersTotal = await safeCount("users");
   const activeUsers = await safeCount("users", (ref) => ref.where("online", "==", true));
   const chatsTotal = await safeCount("chats");
   const callsTotal = await safeCount("callSessions");
-  const rechargeCount = await safeCount("payments", (ref) => ref.where("status", "==", "paid"));
+  const rechargeCount = await safeCount("payments", (ref) => ref.where("status", "==", "SUCCESS"));
   const apiKeySnap = hasFirestoreCredentials
     ? await db.collection("apiKeys").where("active", "==", true).limit(50).get().catch(() => ({ docs: [] }))
     : { docs: localDocs((await listLocalResource("apiKeys")).filter((item) => item.active !== false)) };
@@ -370,8 +345,8 @@ export async function dashboard(req, res) {
     rechargeCount,
     failedPayments,
     apiUsage,
-    remainingLimit: bank ? Number(bank.dailyLimit || 0) - Number(bank.usedAmount || 0) : 0,
-    activePaymentAccount: bank?.label || bank?.upiId || bank?.bankName || bank?.gateway || "Not set"
+    remainingLimit: 0,
+    activePaymentAccount: "Cashfree"
   });
 }
 
@@ -406,7 +381,6 @@ export async function createResource(req, res) {
     updatedAt: now
   };
   if (name === "apiKeys" && payload.secretKey) payload.secretKeyStoredInBackend = true;
-  if (name === "paymentAccounts" && payload.keySecret) payload.secretKeyStoredInBackend = true;
   const explicitId = typeof payload.id === "string" && payload.id.trim() ? payload.id.trim() : null;
   if (explicitId) delete payload.id;
   const ref = hasFirestoreCredentials
@@ -569,36 +543,4 @@ export async function clearResource(req, res) {
     clearCredentialResource("partnerAccounts");
   }
   return res.json({ ok: true, deleted: existing.length });
-}
-
-export async function verifyManualPayment(req, res) {
-  const paymentId = req.params.id;
-  const now = hasFirestoreCredentials ? firebaseAdmin.firestore.FieldValue.serverTimestamp() : new Date().toISOString();
-  const current = hasFirestoreCredentials
-    ? await db.collection("payments").doc(paymentId).get().then((snap) => (snap.exists ? { id: snap.id, ...snap.data() } : null)).catch(() => null)
-    : await listLocalResource("payments").then((items) => items.find((item) => item.id === paymentId || item.orderId === paymentId) || null);
-
-  if (!current) return res.status(404).json({ message: "Payment not found." });
-  if (!["manual_pending", "manual_submitted", "demo_created", "created"].includes(current.status)) {
-    return res.status(400).json({ message: "Payment is not pending manual verification." });
-  }
-
-  const patch = {
-    ...current,
-    id: current.id || paymentId,
-    orderId: current.orderId || paymentId,
-    status: "paid",
-    paymentId: current.manualTransactionId || req.body?.paymentId || `manual_verified_${Date.now()}`,
-    verifiedByAdmin: true,
-    verifiedAt: now,
-    updatedAt: now
-  };
-
-  if (hasFirestoreCredentials) {
-    await db.collection("payments").doc(paymentId).set(patch, { merge: true });
-  } else {
-    await upsertLocalResource("payments", patch);
-  }
-  await creditWallet(current.userId, current.planId);
-  res.json({ ok: true, item: patch });
 }

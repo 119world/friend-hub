@@ -3,7 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env.js";
-import { webhook } from "./controllers/paymentController.js";
+import { webhook, webhookHealth } from "./controllers/paymentController.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import { asyncHandler } from "./utils/asyncHandler.js";
@@ -45,9 +45,14 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan("dev"));
+app.get("/api/payments/webhook", webhookHealth);
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), (req, res, next) => {
   req.rawBody = req.body.toString("utf8");
-  req.body = JSON.parse(req.rawBody);
+  try {
+    req.body = req.rawBody ? JSON.parse(req.rawBody) : {};
+  } catch {
+    req.body = {};
+  }
   next();
 }, asyncHandler(webhook));
 app.use(express.json({ limit: "70mb" }));

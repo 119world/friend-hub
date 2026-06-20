@@ -16,7 +16,7 @@ cp backend/.env.example backend/.env
 
 3. Add Firebase web config in `frontend/.env`.
 
-4. Add Firebase Admin service account values and Razorpay keys in `backend/.env`.
+4. Add Firebase Admin service account values and Cashfree keys in `backend/.env`.
 
 5. Run all apps:
 

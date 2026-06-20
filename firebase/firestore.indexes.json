@@ -9,14 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "bankAccounts",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "active", "order": "ASCENDING" },
-        { "fieldPath": "priority", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "apiKeys",
       "queryScope": "COLLECTION",
       "fields": [

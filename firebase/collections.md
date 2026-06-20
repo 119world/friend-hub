@@ -5,10 +5,9 @@
 - `aiBots`: AI bot profile, personality, reply templates, free reply limit
 - `chats`: chat metadata and participants
 - `chats/{chatId}/messages`: realtime messages
-- `payments`: Razorpay order and payment records
+- `payments`: Cashfree order and payment records with `order_id`, `payment_id`, `user_id`, `amount`, `currency`, `status`, `created_at`, `updated_at`
 - `diamondWallets`: diamonds and voice minutes per user
 - `plans`: admin-managed recharge plans
-- `bankAccounts`: UPI/bank routing accounts with limits
 - `apiKeys`: provider key metadata, never expose secret fields to frontend
 - `appSettings`: voice preview seconds and global settings
 - `reports`: block/report records
