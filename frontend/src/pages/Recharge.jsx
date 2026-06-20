@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Headset, Lock, ShieldCheck, Sparkles, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Headset, ShieldCheck, Sparkles, XCircle } from "lucide-react";
 import { defaultPlans, listenPlans } from "../services/appConfig";
 import api from "../services/api";
 import { useAuth } from "../hooks/useAuth";
@@ -64,11 +64,6 @@ export default function Recharge() {
   }, [plans, selectedPlanId]);
 
   const displayPlans = useMemo(() => plans.slice(0, 4).map(getDisplayPlan), [plans]);
-  const selectedPlan = useMemo(() => displayPlans.find((item) => item.id === selectedPlanId) || displayPlans[0], [displayPlans, selectedPlanId]);
-  const selectedPrice = Number(selectedPlan?.price || selectedPlan?.amount || 0);
-  const selectedOriginal = Number(selectedPlan?.originalPrice || selectedPrice || 0);
-  const discountValue = Math.max(0, selectedOriginal - selectedPrice);
-  const discountPercent = selectedPlan?.savePercent ?? (selectedOriginal > 0 ? Math.round((discountValue / selectedOriginal) * 100) : 0);
 
   useEffect(() => {
     const orderId = searchParams.get("order_id");
@@ -157,7 +152,15 @@ export default function Recharge() {
             {displayPlans.map((plan) => {
               const active = plan.id === selectedPlanId;
               return (
-                <button key={plan.id} onClick={() => setSelectedPlanId(plan.id)} className={`relative min-w-0 rounded-2xl border p-2 text-left ${active ? "border-[#f72565] bg-[#fff6fa]" : "border-zinc-200 bg-white"}`}>
+                <button
+                  key={plan.id}
+                  disabled={Boolean(busy)}
+                  onClick={() => {
+                    setSelectedPlanId(plan.id);
+                    pay(plan);
+                  }}
+                  className={`relative min-w-0 rounded-2xl border p-2 text-left disabled:opacity-70 ${active ? "border-[#f72565] bg-[#fff6fa]" : "border-zinc-200 bg-white"}`}
+                >
                   {plan.badge && <span className="mb-1 inline-flex rounded-full bg-[#f72565] px-2 py-0.5 text-[9px] font-black text-white">Most Popular</span>}
                   <p className="truncate text-[11px] font-black text-zinc-500">{plan.title}</p>
                   <div className="mt-1 flex items-end gap-1">
@@ -171,37 +174,15 @@ export default function Recharge() {
                       <li key={feature} className="flex items-center gap-1.5"><CheckCircle2 size={11} className="shrink-0 text-[#f72565]" /><span className="min-w-0 truncate">{feature}</span></li>
                     ))}
                   </ul>
+                  <span className="pink-gradient mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-full text-xs font-black text-white">
+                    <Sparkles size={14} />
+                    {busy === plan.id ? "Opening..." : `Pay Securely ₹${plan.price}`}
+                  </span>
                 </button>
               );
             })}
           </div>
         </article>
-
-        {selectedPlan && (
-          <article className="mt-2 rounded-[22px] border border-zinc-200 bg-white p-2.5 md:p-3">
-            <div className="rounded-xl bg-[#fff7fb] p-2.5">
-              <h3 className="text-base font-black text-[#111626]">Selected Plan: {selectedPlan.title}</h3>
-              <div className="mt-1 grid grid-cols-2 gap-2 text-xs">
-                <p className="rounded-lg bg-white p-2 font-semibold text-zinc-600">Original: <span className="font-black line-through">₹{selectedOriginal}</span></p>
-                <p className="rounded-lg bg-white p-2 font-semibold text-zinc-600">Now: <span className="font-black text-[#f72565]">₹{selectedPrice}</span></p>
-              </div>
-              <p className="mt-1 text-sm font-black text-emerald-600">Savings: ₹{discountValue} ({discountPercent}% OFF)</p>
-            </div>
-            <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#fff1f7] text-[#f72565]"><Lock size={18} /></span>
-                <div className="min-w-0">
-                  <p className="text-sm font-black text-zinc-900">Cashfree Payment Gateway</p>
-                  <p className="text-[11px] font-semibold text-zinc-500">Cards, netbanking, wallets, and supported payment modes in one secure checkout.</p>
-                </div>
-              </div>
-            </div>
-            <button disabled={busy === selectedPlan.id || busy === "verify-return"} onClick={() => pay(selectedPlan)} className="pink-gradient mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-black text-white disabled:opacity-60">
-              <Sparkles size={17} />
-              {busy === selectedPlan.id ? "Opening Checkout..." : `Pay Securely ₹${selectedPrice}`}
-            </button>
-          </article>
-        )}
 
         {paymentStatus && (
           <article className="mt-2 rounded-[22px] border border-zinc-200 bg-white p-3">

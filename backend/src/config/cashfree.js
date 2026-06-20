@@ -1,7 +1,7 @@
-import { Cashfree } from "cashfree-pg";
+import { Cashfree, CFEnvironment } from "cashfree-pg";
 import { env } from "./env.js";
 
-const cashfreeEnvironment = env.cashfree.env === "SANDBOX" ? Cashfree.SANDBOX : Cashfree.PRODUCTION;
+const cashfreeEnvironment = env.cashfree.env === "SANDBOX" ? CFEnvironment.SANDBOX : CFEnvironment.PRODUCTION;
 
 export const cashfree = new Cashfree(
   cashfreeEnvironment,

@@ -98,7 +98,11 @@ function backendWebhookUrl() {
 }
 
 function cashfreeError(error) {
-  return error?.response?.data?.message || error?.response?.data?.error_description || error?.message || "Cashfree request failed.";
+  const message = error?.response?.data?.message || error?.response?.data?.error_description || error?.message || "Cashfree request failed.";
+  if (/auth/i.test(message)) {
+    return "Cashfree authentication failed. Check CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET, and CASHFREE_ENV on the backend.";
+  }
+  return message;
 }
 
 function paymentIdFromPayments(payments = []) {
