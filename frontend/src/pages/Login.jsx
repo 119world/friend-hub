@@ -1,14 +1,88 @@
-import { useMemo, useState } from "react";
-import { Apple, Flame, Heart, ShieldCheck, UserRound, X } from "lucide-react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { Heart, Flame, ShieldCheck, UserRound, X } from "lucide-react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import PhoneStatusBar from "../components/PhoneStatusBar";
 import { useAuth } from "../hooks/useAuth";
 import { defaultWelcome, listenWelcomeConfig } from "../services/appConfig";
 import api from "../services/api";
 
+/* ─── Floating Hearts Animation Hook ─── */
+function useFloatingHearts(containerRef, enabled) {
+  useEffect(() => {
+    if (!enabled || !containerRef.current) return;
+
+    const container = containerRef.current;
+    let animationId;
+    const hearts = [];
+    const MAX_HEARTS = 18;
+
+    function createHeart() {
+      if (hearts.length >= MAX_HEARTS) return;
+      const el = document.createElement("span");
+      el.className = "fh-heart";
+      el.textContent = "♥";
+
+      const size = 12 + Math.random() * 28;
+      const left = Math.random() * 100;
+      const duration = 6 + Math.random() * 8;
+      const delay = Math.random() * 2;
+      const swayAmount = 20 + Math.random() * 40;
+      const opacity = 0.12 + Math.random() * 0.28;
+
+      el.style.cssText = `
+        position:absolute;
+        bottom:-40px;
+        left:${left}%;
+        font-size:${size}px;
+        color:rgba(255,255,255,${opacity});
+        pointer-events:none;
+        will-change:transform,opacity;
+        animation:floatHeart ${duration}s ${delay}s ease-out forwards;
+        --sway:${swayAmount}px;
+        z-index:1;
+      `;
+
+      container.appendChild(el);
+      hearts.push(el);
+
+      el.addEventListener("animationend", () => {
+        el.remove();
+        const idx = hearts.indexOf(el);
+        if (idx > -1) hearts.splice(idx, 1);
+      });
+    }
+
+    let spawnInterval = setInterval(() => {
+      if (hearts.length < MAX_HEARTS) createHeart();
+    }, 800);
+
+    return () => {
+      clearInterval(spawnInterval);
+      cancelAnimationFrame(animationId);
+      hearts.forEach((h) => h.remove());
+      hearts.length = 0;
+    };
+  }, [enabled]);
+}
+
+/* ─── Entrance Animation Hook ─── */
+function useEntrance() {
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setStarted(true);
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return started;
+}
+
+/* ─── Login Page Component ─── */
 export default function Login() {
-  const { user, loginGoogle, loginGuest, enterWithoutLogin, startPhoneLogin } = useAuth();
+  const { user, loginGuest, enterWithoutLogin, startPhoneLogin } = useAuth();
   const navigate = useNavigate();
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -20,6 +94,9 @@ export default function Login() {
   const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState("");
   const [welcome, setWelcome] = useState(defaultWelcome);
+  const heartsRef = useRef(null);
+  const entrance = useEntrance();
+
   const adminAppUrl = useMemo(() => {
     const envUrl = String(import.meta.env.VITE_ADMIN_APP_URL || "").trim();
     const isLocalHostEnv = /localhost|127\.0\.0\.1/i.test(envUrl);
@@ -27,6 +104,8 @@ export default function Login() {
     if (envUrl && !(isLocalHostEnv && !isLocalHostPage)) return envUrl;
     return "";
   }, []);
+
+  useFloatingHearts(heartsRef, entrance);
 
   useEffect(() => {
     return listenWelcomeConfig(setWelcome);
@@ -77,28 +156,6 @@ export default function Login() {
       }
     } catch (err) {
       setError(err.message);
-    }
-  }
-
-  async function handleGoogle() {
-    setError("");
-    const hasFirebaseConfig = Boolean(
-      import.meta.env.VITE_FIREBASE_API_KEY &&
-      import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
-      import.meta.env.VITE_FIREBASE_PROJECT_ID
-    );
-    const isDemoFirebase =
-      !hasFirebaseConfig ||
-      import.meta.env.VITE_FIREBASE_PROJECT_ID === "demo" ||
-      String(import.meta.env.VITE_FIREBASE_API_KEY || "").includes("demo");
-    if (isDemoFirebase) {
-      enterWithoutLogin({ name: "Google User", loginProvider: "google_demo" });
-      return;
-    }
-    try {
-      await loginGoogle();
-    } catch {
-      enterWithoutLogin({ name: "Google User", loginProvider: "google_fallback" });
     }
   }
 
@@ -153,143 +210,184 @@ export default function Login() {
     setPortalBusy(false);
   }
 
-  const GoogleMark = () => (
-    <span className="relative inline-grid h-8 w-8 place-items-center rounded-full bg-white">
-      <svg viewBox="0 0 48 48" aria-hidden="true" className="h-8 w-8">
-        <path fill="#EA4335" d="M24 9.5c3.5 0 6.3 1.2 8.5 3.3l6.3-6.3C35 2.9 29.9 1 24 1 14.7 1 6.8 6.3 3 14.1l7.5 5.8C12.2 13.8 17.5 9.5 24 9.5z" />
-        <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.1h12.9c-.3 2.1-1.7 5.2-4.8 7.4l7.3 5.7c4.3-4 7.1-9.8 7.1-17.1z" />
-        <path fill="#FBBC05" d="M10.5 28.1A14.7 14.7 0 0 1 10.5 20L3 14.1a23.9 23.9 0 0 0 0 19.8l7.5-5.8z" />
-        <path fill="#34A853" d="M24 47c5.9 0 10.9-1.9 14.5-5.3l-7.3-5.7c-2 1.4-4.5 2.4-7.2 2.4-6.5 0-11.9-4.3-13.5-10.2L3 33.9C6.8 41.7 14.7 47 24 47z" />
-      </svg>
-    </span>
-  );
-
   return (
-    <main
-      className="app-shell relative min-h-screen overflow-hidden bg-cover bg-center text-white"
-      style={{ backgroundImage: `linear-gradient(180deg, rgba(226,36,119,.90) 0%, rgba(255,95,101,.62) 42%, rgba(0,0,0,.30) 100%), url('${welcome.bgPhoto || welcome.welcomeBgPhoto}')` }}
-    >
-      <PhoneStatusBar light />
-      <Heart className="absolute right-20 top-[335px] z-10 rotate-12 text-white drop-shadow-xl" size={40} fill="currentColor" strokeWidth={0} />
-      <Heart className="absolute right-11 top-[386px] z-10 rotate-12 text-white/65 drop-shadow-xl" size={25} fill="currentColor" strokeWidth={0} />
+    <main className="landing-shell">
+      {/* ── Background Layer ── */}
+      <div
+        className={`landing-bg ${entrance ? "landing-bg--visible" : ""}`}
+        style={{ backgroundImage: `url('${welcome.bgPhoto || welcome.welcomeBgPhoto}')` }}
+        aria-hidden="true"
+      />
+      <div className={`landing-overlay ${entrance ? "landing-overlay--visible" : ""}`} aria-hidden="true" />
 
-      <section className="relative z-10 flex min-h-screen flex-col px-5 pb-7 pt-10 min-[390px]:px-8 min-[390px]:pb-9 min-[390px]:pt-12">
-        <div className="mb-10 min-[390px]:mb-16">
-          <div className="relative mb-8 h-12 w-12 min-[390px]:mb-12">
-            <Heart className="absolute left-0 top-0 text-white" size={46} fill="currentColor" strokeWidth={0} />
-            <Flame className="absolute bottom-0 left-3 text-[#ff3f8d]" size={24} fill="currentColor" strokeWidth={0} />
-          </div>
-          <h1 className="max-w-[335px] text-[34px] font-black leading-[1.12] tracking-normal min-[390px]:text-[42px]">{welcome.title}</h1>
-          <p className="mt-4 max-w-[285px] text-[18px] font-medium leading-[1.35] text-white/92 min-[390px]:mt-6 min-[390px]:text-[22px]">{welcome.subtitle}</p>
-        </div>
+      {/* ── Floating Hearts Container ── */}
+      <div ref={heartsRef} className="landing-hearts" aria-hidden="true" />
 
-        <div className="mt-auto space-y-4">
-          <button onClick={handleGetStarted} className="pink-gradient h-16 w-full rounded-full text-lg font-black text-white shadow-2xl shadow-pink-700/25">
-            Get Started
-          </button>
-          <button onClick={handleGoogle} className="flex h-16 w-full items-center justify-center gap-5 rounded-full bg-white text-lg font-bold text-zinc-900 shadow-xl">
-            <GoogleMark /> Continue with Google
-          </button>
-          <button onClick={() => setError("Apple login is ready as a placeholder. Add Apple provider keys before enabling production sign-in.")} className="flex h-16 w-full items-center justify-center gap-5 rounded-full bg-white text-lg font-bold text-zinc-900 shadow-xl">
-            <Apple size={30} fill="currentColor" /> Continue with Apple
-          </button>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
-              <ShieldCheck size={18} /> Admin
-            </button>
-            <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/18 text-sm font-black text-white backdrop-blur">
-              <UserRound size={18} /> Partner
-            </button>
-          </div>
-          {portal && (
-            <div className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[2px]">
-              <form
-                autoComplete="off"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!portalBusy) handlePortalLogin();
-                }}
-                className="absolute inset-x-3 bottom-3 max-h-[72dvh] overflow-y-auto rounded-[26px] bg-white p-4 text-zinc-900 shadow-xl"
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="font-black">{portal === "admin" ? "Admin Login" : "Partner Login"}</p>
-                  <button onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="rounded-full bg-zinc-100 p-2"><X size={16} /></button>
-                </div>
-                <input className="hidden" type="text" name={`fh_${portalNonce}_hidden_user`} autoComplete="username" readOnly />
-                <input className="hidden" type="password" name={`fh_${portalNonce}_hidden_pass`} autoComplete="current-password" readOnly />
-                <input
-                  key={`id_${portal}_${portalNonce}`}
-                  value={portalForm.id}
-                  onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })}
-                  placeholder="ID"
-                  name={`fh_${portal}_${portalNonce}_id`}
-                  autoComplete="off"
-                  data-lpignore="true"
-                  data-1p-ignore
-                  data-form-type="other"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  className="w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
-                />
-                <input
-                  key={`pass_${portal}_${portalNonce}`}
-                  value={portalForm.password}
-                  onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })}
-                  type="password"
-                  placeholder="Password"
-                  name={`fh_${portal}_${portalNonce}_password`}
-                  autoComplete="off"
-                  data-lpignore="true"
-                  data-1p-ignore
-                  data-form-type="other"
-                  className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-3 outline-none"
-                />
-                <button type="submit" disabled={portalBusy} className="pink-gradient mt-3 h-11 w-full rounded-full font-black text-white disabled:opacity-60">
-                  {portalBusy ? "Please wait..." : "Login"}
-                </button>
-              </form>
-            </div>
-          )}
-          {showOtp && (
-            <div className="rounded-[28px] bg-white/95 p-4 text-zinc-900 shadow-xl">
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 mobile number"
-                className="w-full rounded-full bg-zinc-100 px-5 py-4 outline-none"
+      {/* ── Content ── */}
+      <div className={`landing-content ${entrance ? "landing-content--active" : ""}`}>
+        {/* ── Hero Section ── */}
+        <section className="landing-hero">
+          <div className="landing-hero__glass">
+            {/* Floating heart icon */}
+            <div className="landing-hero__icon">
+              <div className="landing-hero__icon-pulse">
+                <Heart size={42} fill="currentColor" strokeWidth={0} />
+              </div>
+              <Flame
+                className="landing-hero__flame"
+                size={20}
+                fill="currentColor"
+                strokeWidth={0}
               />
-              {confirmation && (
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="OTP code"
-                  className="mt-3 w-full rounded-full bg-zinc-100 px-5 py-4 outline-none"
-                />
-              )}
-              <button onClick={handleOtp} className="pink-gradient mt-3 w-full rounded-full py-4 font-black text-white">
-                {confirmation ? "Verify OTP" : "Send OTP"}
+            </div>
+
+            <h1 className="landing-hero__title">{welcome.title}</h1>
+            <p className="landing-hero__subtitle">{welcome.subtitle}</p>
+          </div>
+        </section>
+
+        {/* ── CTA Section ── */}
+        <section className="landing-cta">
+          <button onClick={handleGetStarted} className="landing-btn">
+            <span className="landing-btn__text">Get Started</span>
+          </button>
+
+          {/* Already have account */}
+          <p className="landing-login-link">
+            Already have an account?{" "}
+            <button onClick={() => setShowOtp(true)} className="landing-login-link__action">
+              Log in
+            </button>
+          </p>
+        </section>
+
+        {/* ── Disclaimer ── */}
+        <p className="landing-disclaimer">
+          Friend Hub is a social networking and friendship platform. It is not an adult, escort, or matrimonial service.
+        </p>
+
+        {/* ── Footer Links ── */}
+        <footer className="landing-footer">
+          <Link to="/about">About</Link>
+          <span className="landing-footer__dot">•</span>
+          <Link to="/contact">Contact</Link>
+          <span className="landing-footer__dot">•</span>
+          <Link to="/privacy">Privacy</Link>
+          <span className="landing-footer__dot">•</span>
+          <Link to="/terms">Terms</Link>
+          <span className="landing-footer__dot">•</span>
+          <Link to="/refund">Refund</Link>
+          <span className="landing-footer__dot">•</span>
+          <Link to="/safety">Safety</Link>
+          <span className="landing-footer__dot">•</span>
+          <Link to="/abuse">Report Abuse</Link>
+          <span className="landing-footer__dot">•</span>
+          <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Admin</button>
+          <span className="landing-footer__dot">•</span>
+          <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Partner</button>
+        </footer>
+      </div>
+
+      {/* ── Error Toast ── */}
+      {error && (
+        <div className="landing-error">
+          <p>{error}</p>
+          <button onClick={() => setError("")} className="landing-error__close">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Portal Login Modal ── */}
+      {portal && (
+        <div className="landing-modal-backdrop">
+          <form
+            autoComplete="off"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!portalBusy) handlePortalLogin();
+            }}
+            className="landing-modal"
+          >
+            <div className="landing-modal__header">
+              <p className="landing-modal__title">
+                {portal === "admin" ? "Admin Login" : "Partner Login"}
+              </p>
+              <button
+                onClick={() => { setPortal(""); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }}
+                className="landing-modal__close"
+              >
+                <X size={16} />
               </button>
             </div>
-          )}
-          <p className="text-center text-base font-medium text-white/90">
-            Already have an account? <button onClick={() => setShowOtp(true)} className="font-black text-[#ff3f8d]">Log in</button>
-          </p>
-          <p className="text-center text-xs font-medium text-white/85">
-            Friend Hub is a social networking and friendship platform. It is not an adult, escort, or matrimonial service.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-semibold text-white">
-            <Link to="/about">About</Link>
-            <Link to="/contact">Contact</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
-            <Link to="/refund">Refund</Link>
-            <Link to="/safety">Safety</Link>
-            <Link to="/abuse">Report Abuse</Link>
-          </div>
-          {error && <p className="rounded-2xl bg-white/90 p-3 text-sm text-red-500">{error}</p>}
-          <div id="recaptcha-container" />
+            <input className="hidden" type="text" name={`fh_${portalNonce}_hidden_user`} autoComplete="username" readOnly />
+            <input className="hidden" type="password" name={`fh_${portalNonce}_hidden_pass`} autoComplete="current-password" readOnly />
+            <input
+              key={`id_${portal}_${portalNonce}`}
+              value={portalForm.id}
+              onChange={(e) => setPortalForm({ ...portalForm, id: e.target.value })}
+              placeholder="ID"
+              name={`fh_${portal}_${portalNonce}_id`}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore
+              data-form-type="other"
+              autoCapitalize="off"
+              spellCheck={false}
+              className="landing-modal__input"
+            />
+            <input
+              key={`pass_${portal}_${portalNonce}`}
+              value={portalForm.password}
+              onChange={(e) => setPortalForm({ ...portalForm, password: e.target.value })}
+              type="password"
+              placeholder="Password"
+              name={`fh_${portal}_${portalNonce}_password`}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore
+              data-form-type="other"
+              className="landing-modal__input"
+            />
+            <button type="submit" disabled={portalBusy} className="landing-modal__submit">
+              {portalBusy ? "Please wait..." : "Login"}
+            </button>
+          </form>
         </div>
-      </section>
+      )}
+
+      {/* ── OTP Login Modal ── */}
+      {showOtp && (
+        <div className="landing-modal-backdrop">
+          <div className="landing-modal">
+            <div className="landing-modal__header">
+              <p className="landing-modal__title">Log in</p>
+              <button onClick={() => setShowOtp(false)} className="landing-modal__close">
+                <X size={16} />
+              </button>
+            </div>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91 mobile number"
+              className="landing-modal__input"
+            />
+            {confirmation && (
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="OTP code"
+                className="landing-modal__input"
+              />
+            )}
+            <button onClick={handleOtp} className="landing-modal__submit">
+              {confirmation ? "Verify OTP" : "Send OTP"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div id="recaptcha-container" />
     </main>
   );
 }
