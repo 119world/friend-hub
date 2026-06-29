@@ -167,13 +167,14 @@ select {
 .landing-bg {
   position: absolute;
   inset: 0;
-  background-size: cover;
-  background-position: center top;
+  background-size: 100% auto;
+  background-position: center bottom;
   background-repeat: no-repeat;
   opacity: 0;
   transition: opacity 1.2s cubic-bezier(.22,1,.36,1);
   z-index: 0;
   will-change: opacity;
+  pointer-events: none;
 }
 
 .landing-bg--visible {
@@ -186,9 +187,9 @@ select {
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(226, 36, 119, 0.72) 0%,
-    rgba(255, 95, 101, 0.50) 35%,
-    rgba(20, 10, 30, 0.55) 100%
+    rgba(226, 36, 119, 0.82) 0%,
+    rgba(160, 20, 80, 0.55) 40%,
+    rgba(20, 10, 30, 0.88) 100%
   );
   opacity: 0;
   transition: opacity 1.4s cubic-bezier(.22,1,.36,1);
