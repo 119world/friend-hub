@@ -1,4 +1,5 @@
 import cors from "cors";
+import compression from "compression";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -45,6 +46,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan("dev"));
+app.use(compression());
 app.get("/api/payments/webhook", webhookHealth);
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), (req, res, next) => {
   req.rawBody = req.body.toString("utf8");
