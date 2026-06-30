@@ -11,7 +11,7 @@ const defaultPlans = [
 const defaultWelcome = {
   title: "Meet New Friends. Build Real Connections.",
   subtitle: "Friend Hub is a social networking platform where users can discover people, chat safely, and build interest-based friendships.",
-  bgPhoto: "https://chatgpt.com/backend-api/estuary/content?id=file_00000000e8487207a8f6c3e71d314052&ts=495204&p=fs&cid=1&sig=f42ae19044c4754676c128bd44a8334ab5604d17299efc3c2d4d9156f1694282&v=0",
+  bgPhoto: "https://kommodo.ai/i/No7wWQG0HvqP46BLcpnL",
   maintenanceMode: false,
   maintenanceTitle: "Friend Hub is updating",
   maintenanceMessage: "We are polishing the app. Please check again in a few minutes.",
