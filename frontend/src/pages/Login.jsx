@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Heart, Flame, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Globe2, LockKeyhole, ShieldCheck, UsersRound, X } from "lucide-react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { defaultWelcome, listenWelcomeConfig } from "../services/appConfig";
 import api from "../services/api";
+
+const LOGIN_BG = "/assets/friend-hub-login-bg.png";
 
 /* ─── Floating Hearts Animation Hook ─── */
 function useFloatingHearts(containerRef, enabled) {
@@ -93,7 +94,6 @@ export default function Login() {
   const [portalNonce, setPortalNonce] = useState(() => Date.now());
   const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState("");
-  const [welcome, setWelcome] = useState(defaultWelcome);
   const heartsRef = useRef(null);
   const entrance = useEntrance();
 
@@ -106,10 +106,6 @@ export default function Login() {
   }, []);
 
   useFloatingHearts(heartsRef, entrance);
-
-  useEffect(() => {
-    return listenWelcomeConfig(setWelcome);
-  }, []);
 
   useEffect(() => {
     if (!portal) return undefined;
@@ -212,80 +208,97 @@ export default function Login() {
 
   return (
     <main className="landing-shell">
-      {/* ── Background Layer ── */}
       <div
         className={`landing-bg ${entrance ? "landing-bg--visible" : ""}`}
-        style={{ backgroundImage: `url('${welcome.bgPhoto || welcome.welcomeBgPhoto}')` }}
+        style={{ backgroundImage: `url('${LOGIN_BG}')` }}
         aria-hidden="true"
       />
       <div className={`landing-overlay ${entrance ? "landing-overlay--visible" : ""}`} aria-hidden="true" />
-
-      {/* ── Floating Hearts Container ── */}
       <div ref={heartsRef} className="landing-hearts" aria-hidden="true" />
 
-      {/* ── Content ── */}
       <div className={`landing-content ${entrance ? "landing-content--active" : ""}`}>
-        {/* ── Hero Section ── */}
-        <section className="landing-hero">
-          <div className="landing-hero__glass">
-            {/* Floating heart icon */}
-            <div className="landing-hero__icon">
-              <div className="landing-hero__icon-pulse">
-                <Heart size={42} fill="currentColor" strokeWidth={0} />
-              </div>
-              <Flame
-                className="landing-hero__flame"
-                size={20}
-                fill="currentColor"
-                strokeWidth={0}
-              />
-            </div>
-
-            <h1 className="landing-hero__title">{welcome.title}</h1>
-            <p className="landing-hero__subtitle">{welcome.subtitle}</p>
+        <header className="landing-topbar">
+          <div className="landing-logo" aria-label="Friend Hub">
+            <span />
           </div>
-        </section>
-
-        {/* ── CTA Section ── */}
-        <section className="landing-cta">
-          <button onClick={handleGetStarted} className="landing-btn">
-            <span className="landing-btn__text">Get Started</span>
+          <button className="landing-language" type="button" aria-label="Select language">
+            <Globe2 size={20} strokeWidth={2.5} />
+            <span>English</span>
+            <ChevronDown size={20} strokeWidth={2.5} />
           </button>
+        </header>
 
-          {/* Already have account */}
-          <p className="landing-login-link">
-            Already have an account?{" "}
-            <button onClick={() => setShowOtp(true)} className="landing-login-link__action">
-              Log in
-            </button>
+        <section className="landing-hero" aria-label="Friend Hub login">
+          <div className="landing-hero__spark" aria-hidden="true" />
+          <h1 className="landing-hero__title">Meet New Friends. Build Real Connections.</h1>
+          <p className="landing-hero__subtitle">
+            Friend Hub is a trusted platform to help you make meaningful friendships, find love and build genuine relationships.
           </p>
         </section>
 
-        {/* ── Disclaimer ── */}
-        <p className="landing-disclaimer">
-          Friend Hub is a social networking and friendship platform. It is not an adult, escort, or matrimonial service.
-        </p>
+        <section className="landing-actions" aria-label="Continue to Friend Hub">
+          <div className="landing-feature-card">
+            <div className="landing-feature-card__item">
+              <ShieldCheck size={30} />
+              <span>Verified<br />Profiles</span>
+            </div>
+            <div className="landing-feature-card__divider" />
+            <div className="landing-feature-card__item">
+              <LockKeyhole size={30} />
+              <span>Privacy<br />Protected</span>
+            </div>
+            <div className="landing-feature-card__divider" />
+            <div className="landing-feature-card__item">
+              <UsersRound size={32} />
+              <span>Millions of<br />Happy Users</span>
+            </div>
+          </div>
 
-        {/* ── Footer Links ── */}
-        <footer className="landing-footer">
-          <Link to="/about">About</Link>
-          <span className="landing-footer__dot">•</span>
-          <Link to="/contact">Contact</Link>
-          <span className="landing-footer__dot">•</span>
-          <Link to="/privacy">Privacy</Link>
-          <span className="landing-footer__dot">•</span>
-          <Link to="/terms">Terms</Link>
-          <span className="landing-footer__dot">•</span>
-          <Link to="/refund">Refund</Link>
-          <span className="landing-footer__dot">•</span>
-          <Link to="/safety">Safety</Link>
-          <span className="landing-footer__dot">•</span>
-          <Link to="/abuse">Report Abuse</Link>
-          <span className="landing-footer__dot">•</span>
+          <button onClick={handleGetStarted} className="landing-btn">
+            <span className="landing-btn__text">Get Started</span>
+            <ArrowRight size={31} strokeWidth={2.3} />
+          </button>
+
+          <div className="landing-divider">
+            <span />
+            <p>or continue with</p>
+            <span />
+          </div>
+
+          <div className="landing-socials">
+            <button type="button" onClick={() => setShowOtp(true)} className="landing-social-btn">
+              <span className="landing-social-icon landing-social-icon--google">G</span>
+              <span>Continue with Google</span>
+            </button>
+            <button type="button" onClick={() => setShowOtp(true)} className="landing-social-btn">
+              <span className="landing-social-icon landing-social-icon--facebook">f</span>
+              <span>Continue with Facebook</span>
+            </button>
+            <button type="button" onClick={() => setShowOtp(true)} className="landing-social-btn">
+              <span className="landing-social-icon landing-social-icon--apple">●</span>
+              <span>Continue with Apple</span>
+            </button>
+          </div>
+
+          <p className="landing-signup">
+            Don&apos;t have an account?{" "}
+            <button type="button" onClick={handleGetStarted}>Sign Up</button>
+          </p>
+
+          <p className="landing-privacy">
+            <Check size={21} />
+            <span>
+              By continuing you agree to our{" "}
+              <Link to="/terms">Terms of Service</Link> and{" "}
+              <Link to="/privacy">Privacy Policy</Link>
+            </span>
+          </p>
+        </section>
+
+        <div className="landing-admin-links" aria-label="Staff links">
           <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Admin</button>
-          <span className="landing-footer__dot">•</span>
           <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Partner</button>
-        </footer>
+        </div>
       </div>
 
       {/* ── Error Toast ── */}
