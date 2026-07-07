@@ -93,6 +93,7 @@ export default function Login() {
   const [portalForm, setPortalForm] = useState({ id: "", password: "" });
   const [portalNonce, setPortalNonce] = useState(() => Date.now());
   const [portalBusy, setPortalBusy] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
   const heartsRef = useRef(null);
   const entrance = useEntrance();
@@ -129,6 +130,8 @@ export default function Login() {
   }
 
   async function handleGetStarted() {
+    if (starting) return;
+    setStarting(true);
     setError("");
     if (!hasRealFirebaseConfig()) {
       enterWithoutLogin();
@@ -138,6 +141,8 @@ export default function Login() {
       await loginGuest();
     } catch {
       enterWithoutLogin();
+    } finally {
+      window.setTimeout(() => setStarting(false), 450);
     }
   }
 
@@ -254,8 +259,9 @@ export default function Login() {
             </div>
           </div>
 
-          <button onClick={handleGetStarted} className="landing-btn">
-            <span className="landing-btn__text">Get Started</span>
+          <button onClick={handleGetStarted} className={`landing-btn ${starting ? "is-loading" : ""}`} disabled={starting}>
+            <span className="landing-btn__text">{starting ? "Please wait" : "Get Started"}</span>
+            {starting && <span className="landing-loading-dot" aria-hidden="true" />}
             <ArrowRight size={31} strokeWidth={2.3} />
           </button>
 
@@ -266,17 +272,20 @@ export default function Login() {
           </div>
 
           <div className="landing-socials">
-            <button type="button" onClick={() => setShowOtp(true)} className="landing-social-btn">
+            <button type="button" onClick={handleGetStarted} className={`landing-social-btn ${starting ? "is-loading" : ""}`} disabled={starting}>
               <span className="landing-social-icon landing-social-icon--google">G</span>
-              <span>Continue with Google</span>
+              <span>{starting ? "Please wait" : "Continue with Google"}</span>
+              {starting && <span className="landing-loading-dot landing-loading-dot--dark" aria-hidden="true" />}
             </button>
-            <button type="button" onClick={() => setShowOtp(true)} className="landing-social-btn">
+            <button type="button" onClick={handleGetStarted} className={`landing-social-btn ${starting ? "is-loading" : ""}`} disabled={starting}>
               <span className="landing-social-icon landing-social-icon--facebook">f</span>
-              <span>Continue with Facebook</span>
+              <span>{starting ? "Please wait" : "Continue with Facebook"}</span>
+              {starting && <span className="landing-loading-dot landing-loading-dot--dark" aria-hidden="true" />}
             </button>
-            <button type="button" onClick={() => setShowOtp(true)} className="landing-social-btn">
+            <button type="button" onClick={handleGetStarted} className={`landing-social-btn ${starting ? "is-loading" : ""}`} disabled={starting}>
               <span className="landing-social-icon landing-social-icon--apple">●</span>
-              <span>Continue with Apple</span>
+              <span>{starting ? "Please wait" : "Continue with Apple"}</span>
+              {starting && <span className="landing-loading-dot landing-loading-dot--dark" aria-hidden="true" />}
             </button>
           </div>
 
@@ -296,8 +305,9 @@ export default function Login() {
         </section>
 
         <div className="landing-admin-links" aria-label="Staff links">
-          <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Admin</button>
           <button onClick={() => { setPortal("partner"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Partner</button>
+          <span aria-hidden="true">|</span>
+          <button onClick={() => { setPortal("admin"); setPortalForm({ id: "", password: "" }); setPortalNonce(Date.now()); }} className="landing-footer__link">Admin</button>
         </div>
       </div>
 
